@@ -2,7 +2,7 @@
 
 An independent TypeScript implementation inspired by [Zero-Mem: Zero-Token Memory Operations for LLM Agents](https://arxiv.org/pdf/2607.29377), targeting Node.js and Bun with SQLite and [sqlite-vec](https://alexgarcia.xyz/sqlite-vec/js.html).
 
-**Status: project bootstrap.** The repository provides documentation and TypeScript build tooling. The entry point has no public API yet. Memory ingestion, retrieval, SQLite integration, and final question answering are planned, not implemented.
+**Status: Phase 0 — native storage foundation.** The package has an internal shared SQLite connection and reproducible compatibility tests. The entry point has no public API yet. Durable memory ingestion, retrieval, and final question answering remain planned.
 
 ## Direction
 
@@ -12,31 +12,38 @@ Build a local, persistent memory system whose indexing and retrieval do not call
 
 ## Development
 
-Use Node.js 22 or newer and Bun 1.4 or newer. The bootstrap is checked locally on macOS with Node.js 22.23.3 and Bun 1.4.4. Bun manages dependencies; generated ES modules run in either runtime.
+Use Node.js 22 or newer and Bun 1.4 or newer. Local verification uses macOS ARM64, Node.js 22.23.3, and Bun 1.4.4. Other versions and platforms require their own native results. Bun manages dependencies; generated ES modules run in either runtime. Keep optional dependencies enabled: sqlite-vec distributes its platform binaries through optional packages.
 
 ```sh
 bun install --frozen-lockfile
 bun run typecheck
 bun run build
+bun run test:build
+bun run test:node
+bun run test:bun
 node dist/index.js
 bun dist/index.js
 ```
 
-The last two commands check that the currently empty entry point loads; they produce no output. There is no application server, CLI, or behavioral test suite yet. The package is private during development. Commit `bun.lock` when changing dependencies.
+The suites use the same compiled `node:test` fixtures with Node's test runner and Bun's `bun test` runner. Install both runtimes: persistence tests exchange database files through child processes and fail if the other runtime is unavailable. The last two commands check that the empty public entry point loads; they produce no output. The package remains private, with no application server or CLI. Commit `bun.lock` when changing dependencies.
 
 ## Runtime and Storage Targets
 
-| Runtime | Recommended initial driver | Extension |
+| Runtime | Pinned shared driver | Extension |
 | --- | --- | --- |
-| Node.js | `better-sqlite3` | `sqlite-vec` |
-| Bun | `better-sqlite3` | `sqlite-vec` |
+| Node.js | `better-sqlite3` 13.0.3 | `sqlite-vec` 0.1.9 |
+| Bun | `better-sqlite3` 13.0.3 | `sqlite-vec` 0.1.9 |
 
-These dependencies are not installed in the package yet. An isolated macOS ARM64 probe verified the shared driver in both runtimes, including extension loading and cross-runtime persistence. Windows x64 and Linux still require native tests; Windows ARM64 is outside project scope. Keep `bun:sqlite` as an alternative if compatibility or measurements justify a second driver. See [limitations](docs/LIMITATIONS.md).
+Internal storage uses this single driver, loads sqlite-vec, preserves bigint row keys, enables foreign keys and a 5,000 ms busy timeout, and uses WAL for local file databases. Native loading failures preserve their cause and do not fall back to lexical search. Inline vector BLOBs with filtered scalar cosine queries are the baseline; fixture schemas are not a durable memory format.
+
+CI is configured for Windows x64, Linux glibc x64/ARM64, and macOS x64/ARM64. Configuration alone is not verified support; see [limitations](docs/LIMITATIONS.md) for actual evidence. Windows ARM64 is excluded. See [benchmarks](docs/BENCHMARKS.md) for existing layout comparisons and the reproducible file-backed Phase 0 measurement.
 
 ## Repository Map
 
-- `src/` — TypeScript source; currently an empty package entry point.
+- `src/` — TypeScript source; internal storage and an empty public entry point.
 - `dist/` — generated JavaScript and declarations, ignored by Git.
+- `tests/` — native compatibility fixtures; compiled into ignored `.test-dist/`.
+- `scripts/` — shared test launcher and file-backed storage benchmark.
 - [Architecture](docs/ARCHITECTURE.md) — proposed components, data flow, and invariants.
 - [Reference analysis](docs/REFERENCE_ANALYSIS.md) — lessons from Zero-Mem and alternatives.
 - [Paper analysis](docs/PAPER_ANALYSIS.md) — paper findings, experimental limits, and implications for one-mem.

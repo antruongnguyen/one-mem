@@ -2,9 +2,9 @@
 
 ## Scope and Status
 
-one-mem is an independent TypeScript implementation informed by Zero-Mem. Only the package bootstrap exists today. Every runtime component below is a proposed design; this document does not describe an implemented API.
+one-mem is an independent TypeScript implementation informed by Zero-Mem. Phase 0 implements an internal `openStorage(path)` connection, a shared native test suite, and a CI configuration. The memory API, durable schema, and pipeline below remain proposed designs.
 
-Use one package and a shared TypeScript core for Node.js and Bun. Start with the same better-sqlite3 integration in both runtimes; introduce a second driver only if compatibility or measured benefits justify it. The [reference analysis](REFERENCE_ANALYSIS.md) records what to retain and change; the [implementation plan](IMPLEMENTATION_PLAN.md) defines the recommended contracts, tasks, and verification gates.
+Use one package and a shared TypeScript core for Node.js and Bun. Both runtimes use pinned better-sqlite3 13.0.3 with sqlite-vec 0.1.9. The [reference analysis](REFERENCE_ANALYSIS.md) records what to retain and change; the [implementation plan](IMPLEMENTATION_PLAN.md) defines the recommended contracts, tasks, and verification gates.
 
 ## Paper-Informed Boundaries
 
@@ -64,11 +64,13 @@ Start with concrete storage operations and one driver, without a general databas
 - Define update/delete behavior and migrations before exposing a durable public API.
 - Use parameterized SQL and configured extension paths. Never load arbitrary extensions supplied with ingested content.
 
-The [implementation plan](IMPLEMENTATION_PLAN.md) proposes the relational schema and lifecycle semantics. Inline vector BLOBs with exact filtered distance search are the simpler baseline; benchmark `vec0` at realistic corpus sizes before selecting a more complex index layout. Neither approach should be described as approximate nearest-neighbor search.
+The [implementation plan](IMPLEMENTATION_PLAN.md) proposes the relational schema and lifecycle semantics. Phase 0 retains inline vector BLOBs with exact filtered scalar cosine search based on the [existing comparison and file-backed evidence](BENCHMARKS.md). Production workload and budget validation remain open; no durable schema is frozen in this phase. Neither scalar cosine nor `vec0` should be described as approximate nearest-neighbor search.
 
 ## Runtime Boundary
 
-An isolated macOS ARM64 probe verified better-sqlite3 13.0.3 and sqlite-vec 0.1.9 under Node.js 22.23.3 and Bun 1.4.4, including files exchanged between runtimes. This supports one shared driver as the initial recommendation. It does not replace Windows/Linux/macOS x64 CI or tests of the eventual package implementation.
+The internal connection enables safe bigint integers, foreign keys, a 5,000 ms busy timeout, and WAL for local file databases. It loads the extension before returning and closes on initialization failure. It owns no durable tables or migrations; FTS5 external-content tables and lifecycle SQL currently live in compatibility fixtures. Native availability errors retain their cause; ordinary filesystem and SQLite operational errors remain actionable.
+
+Package fixtures verify the shared driver locally on macOS ARM64 with Node.js 22.23.3 and Bun 1.4.4, including file exchange in both directions. Configured Windows/Linux/macOS x64 lanes have not been executed by this local task. See [limitations](LIMITATIONS.md).
 
 If `bun:sqlite` is later adopted, its macOS extension loading needs a custom SQLite library selected before any connection opens; shared code must not eagerly import Bun-only modules in Node.js. See [limitations](LIMITATIONS.md) for platform constraints and [decisions](DECISIONS.md) for alternatives.
 

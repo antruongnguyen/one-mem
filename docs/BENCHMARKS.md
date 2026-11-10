@@ -1,6 +1,6 @@
-# Vector layout benchmark
+# Storage benchmarks
 
-Measured locally on 2026-11-10. This is an isolated SQL probe, not a benchmark of an implemented one-mem memory engine. At 10,000 and 100,000 records, `vec0` reduced query latency for unfiltered and 50%-selected searches; indexed inline BLOB search was faster when metadata selected 1% of records. These measurements support keeping both as candidates, with inline BLOBs as the simpler initial baseline pending a real workload and latency budget.
+The original vector-layout comparison below was measured locally on 2026-11-10 as an isolated SQL probe. At 10,000 and 100,000 records, `vec0` reduced query latency for unfiltered and 50%-selected searches; indexed inline BLOB search was faster when metadata selected 1% of records. These measurements support inline BLOBs as the simpler initial baseline pending a real workload and latency budget. The later [Phase 0 file-backed measurement](#phase-0-file-backed-storage-measurement) uses the implemented internal connection and records the remaining performance gate. Neither is a benchmark of a public one-mem memory engine.
 
 ## Results
 
@@ -101,6 +101,63 @@ At p50, vec0 was about 1.5–2.1 times faster for broad searches in this fixture
 Keep inline BLOBs as the simple baseline for atomic record/embedding updates, with vec0 a concrete candidate when broad searches miss the agreed latency budget. Before selecting the shipped layout, measure representative embeddings, real filter combinations and scope distributions, and the expected query/update mix against that budget; verify lifecycle consistency for any additional vec0 table. Do not add dual storage or adaptive routing based only on these synthetic cases.
 
 Disk size, memory differences, cold-cache latency, write/update/delete cost, concurrent workloads, embedding generation, FTS/hybrid retrieval, final QA, and Windows/Linux/macOS x64 performance were not measured. Because both layouts coexisted, this probe cannot establish comparative storage or memory costs. Neither production-scale suitability nor benchmark parity with a reference implementation follows from these results.
+
+## Phase 0 file-backed storage measurement
+
+Measured locally on 2026-11-10 using the tracked `scripts/benchmark-storage.mjs`, compiled internal `openStorage`, and compiled test fixture schema. This adds missing file-backed evidence; the completed in-memory scalar/vec0 comparison above was not repeated. There is no product hybrid retrieval API in Phase 0.
+
+The provisional local threshold was declared **before execution: warm hybrid p95 <= 100 ms**. It passed at 10k and for 1%-selected 100k queries, but **failed for unfiltered and 50%-selected 100k queries in both runtimes**. The threshold has not been raised. Benchmark execution is complete; performance acceptance remains open.
+
+| Runtime | Total records | Eligible records | Filter | Hybrid p50 / p95 (ms) | 100 ms p95 threshold |
+| --- | ---: | ---: | --- | ---: | --- |
+| Node.js | 10,000 | 10,000 | none | 9.035 / 9.506 | Pass |
+| Node.js | 10,000 | 5,000 | 50% | 7.461 / 7.776 | Pass |
+| Node.js | 10,000 | 100 | 1% | 0.302 / 0.311 | Pass |
+| Node.js | 100,000 | 100,000 | none | 102.087 / 105.668 | **Miss** |
+| Node.js | 100,000 | 50,000 | 50% | 93.065 / 104.025 | **Miss** |
+| Node.js | 100,000 | 1,000 | 1% | 13.679 / 15.398 | Pass |
+| Bun | 10,000 | 10,000 | none | 8.680 / 8.971 | Pass |
+| Bun | 10,000 | 5,000 | 50% | 7.191 / 8.372 | Pass |
+| Bun | 10,000 | 100 | 1% | 0.300 / 0.312 | Pass |
+| Bun | 100,000 | 100,000 | none | 103.376 / 113.431 | **Miss** |
+| Bun | 100,000 | 50,000 | 50% | 95.346 / 111.036 | **Miss** |
+| Bun | 100,000 | 1,000 | 1% | 13.262 / 14.096 | Pass |
+
+| Runtime | Records inserted in one transaction | Insert + commit (ms) | Update 1,000 rows + commit (ms) | Main DB bytes after updates/checkpoint/close |
+| --- | ---: | ---: | ---: | ---: |
+| Node.js | 10,000 | 160.494 | 11.803 | 21,168,128 |
+| Node.js | 100,000 | 2655.472 | 12.525 | 211,369,984 |
+| Bun | 10,000 | 154.326 | 11.076 | 21,168,128 |
+| Bun | 100,000 | 2639.400 | 11.913 | 211,369,984 |
+
+### Method and checks
+
+- Environment: Apple M3 Pro, 12 logical CPUs, 36 GiB RAM, macOS ARM64/Darwin 25.6.0; Node 22.23.3 then Bun 1.4.4, one sequential run each. better-sqlite3 13.0.3, sqlite-vec 0.1.9, loaded extension `v0.1.9`, driver SQLite 3.53.4. Runtime-bundled SQLite versions are not the driver's SQLite version.
+- Fresh local temporary database per size, in a path containing spaces and Unicode. WAL, foreign keys enabled, 5,000 ms busy timeout, observed `synchronous = 1` (NORMAL). No explicit ANALYZE, cache tuning, cache eviction, or manual GC. Queries run after close/reopen but retain a warm OS cache; these are not cold-disk measurements. NORMAL/WAL is not evidence of power-loss durability; crash testing remains future work.
+- Same deterministic normalized 384-dimensional vectors, seeds, query SHA-256, and dataset SHA-256 values as above, now explicitly encoded little-endian. The script asserts those hashes. Vectors are generated before write timing; text/parameter creation, SQL execution, external-content FTS triggers, and transaction commit are inside write timing. Schema setup is excluded. The fixture omits later memory metadata/settings and is not a supported durable schema.
+- Source is `id % 2`, session is `id % 100`, and caller IDs are zero-padded six-digit ASCII strings. No filter selects all rows; source `0` selects 50%; source `0` plus session `0` selects 1%. Text is `common record ID needle` for IDs divisible by ten and `common record ID ordinary` otherwise. The lexical query is `needle`: it matches 10%, 20%, and 100% of eligible rows in those three scope cases respectively. These short synthetic records are workload assumptions, not representative documents or model quality evidence.
+- Each branch applies the scope before taking 50 candidates. Dense sorts cosine ascending, lexical sorts BM25 ascending, and both break ties using binary caller IDs. Equal-weight RRF sums `1 / (60 + rank)`; final score ties use caller ID and return ten text-bearing rows. One synchronous read transaction includes both branches, materializing candidate text, JavaScript fusion/sorting, and final rows. Timings include that whole transaction, excluding result assertions. No embedding provider, public search validation, evidence budget, or neighbor logic is measured.
+- For each of three fixed queries: one untimed reference call, two warmups, then 30 samples, giving 90 samples per runtime/size/scope. Percentiles use nearest rank. Raw samples and final IDs/text/scores are retained in generated JSON. Assertions verify ten finite-scored, correctly scoped, repeatable rows. The reference call is a determinism check, not an independent ranking-quality oracle. Comparing the two reports confirmed identical IDs, text, scores, and hashes between runtimes.
+- After queries, one transaction replaces text and embeddings of IDs 1..1000. A truncate checkpoint and close precede size measurement. WAL and SHM sizes were both zero/absent at that point in both runtimes. Reopen assertions verify the total count, the 1,000 new FTS matches, removal of the old common term from changed rows, and all 1,000 changed vector BLOBs. Insertion/update figures are single batch observations, not write-latency percentiles. Storage size is a checkpointed logical file footprint, not peak disk usage, live WAL growth, or memory consumption.
+- No other project tests or benchmarks ran concurrently. Ordinary desktop background activity remained. These measurements cannot compare Node and Bun performance or isolate the cause of the 100k misses.
+
+### Reproduction and interpretation
+
+From a clean checkout with both runtimes installed:
+
+```sh
+bun install --frozen-lockfile
+bun run test:build
+mkdir -p docs/superpowers/phase0
+node scripts/benchmark-storage.mjs > docs/superpowers/phase0/benchmark-storage-node.json
+bun scripts/benchmark-storage.mjs > docs/superpowers/phase0/benchmark-storage-bun.json
+```
+
+Run sequentially without other benchmarks. The script creates and removes its own temporary databases and prints JSON; it needs no pre-existing ignored probe, database, or reference file. Output reports remain ignored. Functional/assertion failures exit nonzero. Timing misses are recorded as `withinProvisionalBudget: false`, not made into hardware-sensitive unit-test failures.
+
+Retain inline BLOB/scalar cosine as a **provisional** baseline. The 100k hybrid misses are concrete limits of this fixture; they do not establish that changing vector layout is necessary or sufficient, since FTS, file/page access, candidate materialization, and fusion are also included. Existing vec0 results concern a different in-memory branch workload. Do not rerun the benchmark to obtain a passing number or add a second authoritative vector store.
+
+**Open acceptance item:** obtain representative embeddings/text/scopes/query-update mix and an agreed production budget, then attribute any misses before freezing the durable schema or selecting vec0. The substituted synthetic workload and local threshold are a material adjustment to the original Phase 0 gate, documented in [D006](DECISIONS.md#d006--phase-0-layout-and-evidence-boundary). Native storage verification is complete; production suitability and the failed local performance threshold are not passed gates.
 
 ## Sources
 

@@ -2,14 +2,45 @@
 
 ## Current Implementation
 
-- This repository contains build tooling and design documents only. `src/index.ts` exports no memory API.
-- SQLite drivers, sqlite-vec, embeddings, entity extraction, ingestion, retrieval, final QA, and benchmark evaluation are not implemented.
-- There is no behavioral test suite or CI matrix yet. Type checking, compilation, and loading an empty entry point do not validate memory behavior.
-- No performance, accuracy, concurrency, or paper-parity claims have been established.
+- Phase 0 implements internal shared better-sqlite3/sqlite-vec connection setup. `src/index.ts` still exports no memory API.
+- Durable migrations/settings, embeddings/provider validation, ingestion, product retrieval, entity extraction, and final QA are not implemented. Compatibility tests and the storage benchmark use temporary fixture schemas, not a supported database format.
+- Compiled native compatibility suites and a CI matrix exist. SQL fixture behavior does not establish the later memory API's correctness, and unexecuted CI configuration does not establish platform support.
+- No production performance, accuracy, concurrency, or paper-parity claims have been established.
 
 ## Runtime and Platform Coverage
 
-The bootstrap was checked locally on macOS using Node.js 22.23.3 and Bun 1.4.4. A separate, isolated macOS ARM64 probe also verified better-sqlite3 13.0.3 with sqlite-vec 0.1.9 (SQLite 3.53.4) in both runtimes: vector/FTS5 operations, rollback, deletion, and cross-runtime persistence passed without a custom dylib. These probes are not a shipped storage implementation. Windows x64, Linux, macOS x64, and other runtime versions remain unverified. Windows ARM64 is out of scope, with no compatibility work planned.
+The package is verified locally on macOS ARM64 using Node.js 22.23.3 and Bun 1.4.4 with better-sqlite3 13.0.3, sqlite-vec 0.1.9, and SQLite 3.53.4. Project fixtures cover native loading, FTS5 and stale-term maintenance, known cosine distances, filtering before top-k, bigint row keys, binding, rollback, deletion, reopen, and file exchange in both runtime directions without a custom dylib. The earlier ignored probes remain historical evidence, not a test dependency.
+
+The following lanes are **configured, not executed by this local task**. Runner labels and architectures were checked against the [GitHub runner table](https://github.com/actions/runner-images/blob/main/README.md); actual availability, runner OS images, package installation and native execution still depend on a CI run. There has been no push or remote CI run for this work.
+
+| CI runner | Expected platform / architecture | Runtime selection | Execution evidence |
+| --- | --- | --- | --- |
+| `windows-2025` | Windows x64 | Node 22.23.3 / Bun 1.4.4 | Unverified |
+| `ubuntu-24.04` | Linux glibc x64 | Node 22.23.3 / Bun 1.4.4 | Unverified |
+| `ubuntu-24.04-arm` | Linux glibc ARM64 | Node 22.23.3 / Bun 1.4.4 | Unverified |
+| `macos-15` | macOS ARM64 | Node 22.23.3 / Bun 1.4.4 | Hosted image unverified; local macOS ARM64 passed |
+| `macos-15-intel` | macOS x64 | Node 22.23.3 / Bun 1.4.4 | Unverified |
+| `ubuntu-24.04` | Linux glibc x64 | Current Node LTS / latest Bun | Unverified; selected versions reported at execution |
+
+Both executables must be on PATH for the compatibility suites. Cross-runtime tests fail rather than skip when either is missing. Windows ARM64 is out of scope, with no compatibility work planned; Linux musl has no configured lane and remains unverified.
+
+### Local verification record — 2026-11-10
+
+The following also passed in a fresh export of the staged project files, with a new dependency installation and without ignored probes, local references, prebuilt output, or the sibling zero-mem checkout:
+
+| Check | Result |
+| --- | --- |
+| `bun install --frozen-lockfile` | Passed; native optional package retained |
+| `bun run typecheck` / `bun run build` | Passed |
+| `bun run test:build` | Passed; tests import compiled package modules |
+| `bun run test:node` | 16 passed, 0 failed, 0 skipped |
+| `bun run test:bun` | 16 passed, 0 failed, 0 skipped |
+| Import `dist/index.js` in Node and Bun | Passed; public entry remains empty |
+| Native workflow YAML parsing | Passed; remote jobs not executed |
+
+The test-first run compiled successfully and failed with the intended missing storage implementation in both runtimes. Native missing/corrupt binary and missing extension cases use isolated copies of real dependency JavaScript without changing the project's installed packages. These checks establish local compatibility, not crash recovery, power-loss durability, concurrency behavior, or the later memory API.
+
+An independent Phase 0 review found no actionable issues and confirmed error-cause preservation during failed initialization/cleanup in both runtimes. Approval covers the storage foundation and verification work; the performance acceptance item below remains open.
 
 | Target | Known constraint | Required evidence |
 | --- | --- | --- |
@@ -17,7 +48,7 @@ The bootstrap was checked locally on macOS using Node.js 22.23.3 and Bun 1.4.4. 
 | Windows x64 | sqlite-vec publishes a binary | Verify installation, loading, paths, and persistence |
 | Windows ARM64 | Out of scope; sqlite-vec 0.1.9 has no packaged binary | Not applicable; support is not planned |
 | Linux x64/ARM64 | sqlite-vec publishes binaries | Verify the actual distribution and architecture; musl is unverified |
-| macOS x64/ARM64 | Shared driver probe passed on ARM64 only | Test x64 and the eventual package integration separately |
+| macOS x64/ARM64 | Shared package fixtures passed locally on ARM64 only | Test x64 and hosted ARM64 images separately |
 
 If the alternative `bun:sqlite` driver is adopted, Homebrew can install SQLite using `brew install sqlite` and discover its prefix with `brew --prefix sqlite`. Call `Database.setCustomSQLite()` with the resulting `lib/libsqlite3.dylib` path before opening a database. Do not hardcode `/opt/homebrew` or `/usr/local`. The shared better-sqlite3 recommendation does not require this setup; no one-mem configuration option implements it.
 
@@ -25,7 +56,9 @@ Do not omit optional dependencies when installing sqlite-vec: its platform binar
 
 ## Research and Data
 
-The user selected 10,000 and 100,000 records as initial evaluation sizes while production volume remains unknown. [Local benchmarks](BENCHMARKS.md) use synthetic 384-dimensional vectors and warm in-memory queries. They do not measure disk behavior, embedding generation, FTS5/RRF, concurrency, or full application latency, and do not establish a capacity guarantee.
+The user selected 10,000 and 100,000 records as initial evaluation sizes while production volume remains unknown. [Local benchmarks](BENCHMARKS.md) retain the synthetic in-memory scalar/vec0 comparison and add file-backed insertion, updates, checkpointed disk size, and benchmark-only dense/FTS5/RRF timings. These are warm-cache synthetic fixtures, not cold-disk, representative corpus, concurrent, embedding-generation, or complete application measurements. They establish no capacity guarantee.
+
+The original Phase 0 representative-workload gate remains unresolved: no production corpus or agreed latency budget was supplied. The recorded 384-dimensional workload and 100 ms warm hybrid p95 threshold are provisional local engineering assumptions. The threshold **failed for unfiltered and 50%-selected 100k queries in both runtimes** (unfiltered p95: Node 105.668 ms, Bun 113.431 ms). Measurement execution is complete, but performance acceptance remains open; resolve workload/budget and attribute the miss before freezing a durable Phase 1 schema. The combined timings do not show that changing to `vec0` is necessary or sufficient, so the inline baseline remains provisional.
 
 The reference uses English-oriented NER and query heuristics. Multilingual support, including Vietnamese input, requires its own validation. Embedding models, entity extraction, vector dimensions, and reader budgets remain open choices.
 

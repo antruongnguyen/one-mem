@@ -9,6 +9,8 @@
 
 ### Added
 
+- Added the Phase 0 internal shared better-sqlite3/sqlite-vec connection, compiled native compatibility tests, and a native CI matrix with explicit architecture checks.
+- Added a reproducible file-backed storage benchmark while retaining inline vector BLOBs and scalar cosine as the provisional baseline; no public memory API or durable schema is introduced.
 - Added paper-grounded architecture and evaluation notes, plus author acknowledgements and a direct paper link in the README.
 - Added local 10,000/100,000-record vector benchmarks with metadata selectivity, matched runtime results, and explicit measurement limits.
 - Added source-based reference analysis, an implementation plan, and isolated local SQLite compatibility evidence.

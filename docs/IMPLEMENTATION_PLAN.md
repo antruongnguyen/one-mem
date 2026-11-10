@@ -229,10 +229,10 @@ Do not create the later files before their behavior exists. Keep SQL in one focu
 
 **Existing evidence:** a throwaway macOS arm64 probe passed under Node 22.23.3 and Bun 1.4.4 with `better-sqlite3` 13.0.3, sqlite-vec 0.1.9, and SQLite 3.53.4. Extension loading, FTS5, scoped cosine neighbors, integer values above 2^53, failed-write rollback, deletion, reopen, and Node↔Bun persistence succeeded. An inline-BLOB + external-content FTS trigger fixture also passed update, stale-term removal, failed-update rollback, and deletion in both runtimes. This is not a Windows/Linux/macOS x64 verification.
 
-- [ ] Add the failing native fixture before product storage code. It must open a temporary path with spaces/Unicode, load the extension, check `vec_version()`, exercise FTS5, and close in `finally`.
-- [ ] Pin the verified candidate packages using `bun add --exact better-sqlite3@13.0.3 sqlite-vec@0.1.9`; add Node 22 and driver types with `bun add --dev --exact @types/node@22 @types/better-sqlite3`. Retain platform optional dependencies. If the selected release bundles declarations, omit redundant driver typings after verifying the package.
-- [ ] Explicitly include Node types in TypeScript 7 configuration. Keep runtime APIs Node-compatible; no Bun-only import or Bun type package is required for the shared driver.
-- [ ] Add this `tsconfig.test.json`. Tests import `../dist/index.js` or concrete `../dist/*.js` modules so both runtimes exercise compiled JavaScript; build the package before compiling tests. Ignore `.test-dist/`.
+- [x] Add the failing native fixture before product storage code. It must open a temporary path with spaces/Unicode, load the extension, check `vec_version()`, exercise FTS5, and close in `finally`.
+- [x] Pin the verified candidate packages using `bun add --exact better-sqlite3@13.0.3 sqlite-vec@0.1.9`; add Node 22 and driver types with `bun add --dev --exact @types/node@22 @types/better-sqlite3`. Retain platform optional dependencies. If the selected release bundles declarations, omit redundant driver typings after verifying the package.
+- [x] Explicitly include Node types in TypeScript 7 configuration. Keep runtime APIs Node-compatible; no Bun-only import or Bun type package is required for the shared driver.
+- [x] Add this `tsconfig.test.json`. Tests import `../dist/index.js` or concrete `../dist/*.js` modules so both runtimes exercise compiled JavaScript; build the package before compiling tests. Ignore `.test-dist/`.
 
 ```json
 {
@@ -245,7 +245,7 @@ Do not create the later files before their behavior exists. Keep SQL in one focu
   "exclude": ["node_modules", "dist", ".test-dist"]
 }
 ```
-- [ ] Add package scripts `test:build` = `bun run build && tsc -p tsconfig.test.json`, `test:node` = `node scripts/run-tests.mjs`, and `test:bun` = `bun scripts/run-tests.mjs`. Keep the launcher this small:
+- [x] Add package scripts `test:build` = `bun run build && tsc -p tsconfig.test.json`, `test:node` = `node scripts/run-tests.mjs`, and `test:bun` = `bun scripts/run-tests.mjs`. Keep the launcher this small:
 
 ```js
 import { readdirSync } from "node:fs";
@@ -261,13 +261,16 @@ if (result.error) throw result.error;
 process.exit(result.status ?? 1);
 ```
 
-- [ ] Run `bun run test:build`, then `node --test .test-dist/storage-compatibility.test.js` and `bun test .test-dist/storage-compatibility.test.js`; record the first expected failure as the missing storage function/behavior, not a broken test loader. Implement only the shared driver and rerun to green.
-- [ ] With `[1,0]`, `[0,1]`, `[-1,0]` and query `[1,0]`, assert cosine distances `[0,1,2]` within `1e-6`. Add closer out-of-scope vectors and assert a scoped top-1 still returns the scoped record.
-- [ ] Validate storage against the user-selected 10,000 and 100,000 records using representative dimensions, filters, and a stated latency budget. [Local benchmark results](BENCHMARKS.md) cover warm in-memory vector queries, not the complete application. Record hardware, cache state, run count, and p50/p95; add file-backed insertion, updates, disk size, and hybrid-search measurements before freezing the schema. Keep scalar if it fits the expected workload; select `vec0` if its broad-scan advantage justifies separate vector-table maintenance. Do not ship two selectable engines.
-- [ ] Add cross-runtime reopen tests, failed insert/delete rollback, parameter binding, and row-key behavior. For `vec0` with `id INTEGER PRIMARY KEY`, use `id`; FTS5 still uses its `rowid`.
-- [ ] Add native CI for Windows x64, Linux glibc x64/arm64, and macOS arm64/x64, recording `process.arch`. Candidate runner labels are `windows-2025`, `ubuntu-24.04`, `ubuntu-24.04-arm`, `macos-15`, and `macos-15-intel`; verify current availability and actual architecture. Run both runtime suites in each available native lane; explicitly mark any unavailable architecture as unverified. Use pinned baseline versions and an additional current-supported-runtime check; never mark a skipped lane passed.
+- [x] Run `bun run test:build`, then `node --test .test-dist/storage-compatibility.test.js` and `bun test ./.test-dist/storage-compatibility.test.js`; record the first expected failure as the missing storage function/behavior, not a broken test loader. Implement only the shared driver and rerun to green.
+- [x] With `[1,0]`, `[0,1]`, `[-1,0]` and query `[1,0]`, assert cosine distances `[0,1,2]` within `1e-6`. Add closer out-of-scope vectors and assert a scoped top-1 still returns the scoped record.
+- [x] Execute the **provisional local** storage measurement at 10,000/100,000 records: reuse existing in-memory comparisons and add reproducible file-backed insertion, updates, checkpointed disk size, and benchmark-only hybrid measurements. Record environment, raw samples, p50/p95, and the declared 100 ms warm hybrid p95 engineering threshold in [BENCHMARKS.md](BENCHMARKS.md). Keep inline BLOB/scalar cosine and one driver. **Material adjustment:** the original representative-production-workload and agreed-budget requirement remains open because neither input is available; the synthetic 384-dimensional fixture does not freeze the Phase 1 schema or establish production suitability. See D006 in [DECISIONS.md](DECISIONS.md).
+- [ ] Pass the performance acceptance gate before freezing a durable schema: the provisional 100 ms warm hybrid p95 threshold was missed by 100k unfiltered/50% cases in both runtimes. Keep scalar provisional; representative-workload validation and branch attribution remain open. This does not invalidate completed native compatibility tests.
+- [x] Add cross-runtime reopen tests, failed insert/delete rollback, parameter binding, and row-key behavior. For `vec0` with `id INTEGER PRIMARY KEY`, use `id`; FTS5 still uses its `rowid`.
+- [x] Add native CI for Windows x64, Linux glibc x64/arm64, and macOS arm64/x64, recording `process.arch`. Candidate runner labels are `windows-2025`, `ubuntu-24.04`, `ubuntu-24.04-arm`, `macos-15`, and `macos-15-intel`; verify current availability and assert actual architecture. Run both runtime suites in each available native lane; explicitly mark any unavailable architecture as unverified. Use pinned baseline versions and an additional current-supported-runtime check; never mark a skipped lane passed.
 
 **Acceptance:** chosen driver/layout passes the same native fixture in both runtimes locally; CI evidence determines advertised platforms. Failure produces an actionable extension/platform error, never a silent lexical-only replacement. Record the layout decision before Phase 1 schema is treated as durable. Commit example: `feat: establish verified sqlite storage`.
+
+**Execution notes (2026-11-10):** the initial fixture compiled successfully and failed in both runtimes with `Storage is not implemented` before the connection was implemented. Bun requires the explicit `./` prefix for a directly supplied file in ignored `.test-dist/`; the shared launcher uses absolute paths. Native CI labels are configured and checked against current runner documentation, but no remote lanes have executed. The local package suites and exact environment are recorded in [LIMITATIONS.md](LIMITATIONS.md). No later-phase API or durable migration schema was added.
 
 ### Phase 1 — Atomic records, provider validation, and lifecycle
 

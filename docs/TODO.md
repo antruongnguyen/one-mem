@@ -14,13 +14,15 @@ Use [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for task details, contracts
 ## 1. SQLite Compatibility
 
 - [x] Probe shared better-sqlite3/sqlite-vec on local macOS ARM64 in Node.js and Bun, including exchanged database files.
-- [ ] Pin driver and sqlite-vec versions after checking their compatibility.
-- [ ] Turn isolated probe cases into package tests: vector/FTS operations, rollback, deletion, and reopen.
+- [x] Pin the verified better-sqlite3 13.0.3 and sqlite-vec 0.1.9 packages, Node 22 types, and driver types.
+- [x] Turn isolated probe cases into compiled package tests: native loading, vector/FTS operations, scoped top-k, bigint keys, binding, rollback, deletion, reopen, and cross-runtime writes.
 - [x] Compare warm in-memory vector queries at the user-selected 10,000 and 100,000 records, with no filter, 50%, and 1% selection; see [local results](BENCHMARKS.md).
-- [ ] Validate representative embedding dimensions, file-backed queries, hybrid retrieval, updates, and storage costs against the expected workload and latency budget.
-- [ ] Add Windows x64, Linux, and macOS CI lanes for both runtimes. Windows ARM64 is out of scope, not a deferred lane. Record runner architectures and unsupported combinations explicitly.
+- [x] Add a reproducible file-backed 384-dimensional fixture for insertion, updates, checkpointed disk size, and benchmark-only hybrid queries at 10k/100k, with a declared provisional local budget; see [results and limits](BENCHMARKS.md).
+- [ ] Validate representative production embeddings, text, filters, query/update mix, and storage costs against an agreed workload and latency budget before freezing the durable schema. Synthetic Phase 0 evidence does not close this gate.
+- [x] Configure Windows x64, Linux glibc x64/ARM64, and macOS ARM64/x64 CI lanes for both pinned runtimes, plus a current-runtime Linux lane. Assert actual architecture and document unexecuted coverage. Windows ARM64 remains out of scope.
+- [ ] Obtain passing native CI results before advertising support beyond locally verified macOS ARM64. No remote CI run was performed in Phase 0.
 
-**Done when:** the shared driver passes the same package fixtures on the documented runtime/platform matrix; failed extension loading gives actionable errors. Do not add a second driver without a demonstrated need.
+**Phase 0 evidence:** the shared driver passes package fixtures locally in Node.js and Bun; native/extension failures are actionable. Configured lanes still require execution before expanding support claims. Keep the scalar inline baseline and one driver; production suitability remains open as recorded in [D006](DECISIONS.md#d006--phase-0-layout-and-evidence-boundary).
 
 ## 2. Durable Ingestion
 

@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            os: windows-2025
+            platform: win32
+            arch: x64
+            node_version: 22.23.3
+            bun_version: 1.4.4
+          - name: Linux glibc x64
+            os: ubuntu-24.04
+            platform: linux
+            arch: x64
+            node_version: 22.23.3
+            bun_version: 1.4.4
+          - name: Linux glibc arm64
+            os: ubuntu-24.04-arm
+            platform: linux
+            arch: arm64
+            node_version: 22.23.3
+            bun_version: 1.4.4
+          - name: macOS arm64
+            os: macos-15
+            platform: darwin
+            arch: arm64
+            node_version: 22.23.3
+            bun_version: 1.4.4
+          - name: macOS x64
+            os: macos-15-intel
+            platform: darwin
+            arch: x64
+            node_version: 22.23.3
+            bun_version: 1.4.4
+          - name: Current supported runtimes on Linux x64
+            os: ubuntu-24.04
+            platform: linux
+            arch: x64
+            node_version: lts/*
+            bun_version: latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node_version }}
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ matrix.bun_version }}
+
+      - name: Report and verify runtime versions and architecture
+        env:
+          EXPECTED_PLATFORM: ${{ matrix.platform }}
+          EXPECTED_ARCH: ${{ matrix.arch }}
+        run: |
+          node --version
+          bun --version
+          node -e "if (process.platform !== process.env.EXPECTED_PLATFORM || process.arch !== process.env.EXPECTED_ARCH) throw new Error('Unexpected Node target: ' + process.platform + '/' + process.arch); console.log('Node ' + process.version + ' ' + process.platform + '/' + process.arch); if (process.platform === 'linux') { const glibc = process.report?.getReport()?.header?.glibcVersionRuntime; if (!glibc) throw new Error('Expected glibc on Linux'); console.log('glibc=' + glibc); }"
+          bun -e "if (process.platform !== process.env.EXPECTED_PLATFORM || process.arch !== process.env.EXPECTED_ARCH) throw new Error('Unexpected Bun target: ' + process.platform + '/' + process.arch); console.log('Bun ' + Bun.version + ' ' + process.platform + '/' + process.arch);"
+
+      - run: bun install --frozen-lockfile
+
+      - run: bun run typecheck
+      - run: bun run build
+      - run: bun run test:build
+      - run: bun run test:node
+      - run: bun run test:bun
+
+      - name: Import built entry with Node
+        run: node --input-type=module -e "await import('./dist/index.js')"
+
+      - name: Import built entry with Bun
+        run: bun -e "await import('./dist/index.js')"
