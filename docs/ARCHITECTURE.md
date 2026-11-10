@@ -2,7 +2,7 @@
 
 ## Scope and Status
 
-one-mem is an independent TypeScript implementation informed by Zero-Mem. Phase 0 established internal `openStorage(path)` and native compatibility fixtures. Phase 1 adds a private, experimental version-1 schema and the `openMemory`, `upsert`, `get`, `remove`, and `close` lifecycle. Phase 2 adds scoped dense and lexical retrieval through `search`, with rank-fused whole-record evidence under a UTF-8 text-byte budget. Phase 3 adds optional bounded session-neighbor context under that same budget without changing schema version 1 or adding dependencies. Neither the API nor schema has a stable cross-release compatibility promise. Readers and graph retrieval remain separate, evaluation-gated follow-ups.
+one-mem is an independent TypeScript implementation informed by Zero-Mem. Phase 0 established internal `openStorage(path)` and native compatibility fixtures. Phase 1 adds a private, experimental version-1 schema and the `openMemory`, `upsert`, `get`, `remove`, and `close` lifecycle. Phase 2 adds scoped dense and lexical retrieval through `search`, with rank-fused whole-record evidence under a UTF-8 text-byte budget. Phase 3 adds optional bounded session-neighbor context under that same budget. Phase 4 adds a private offline synthetic evaluator, installed-tarball consumer checks, version-1 initialization/rollback tests, backup/restore and model-space rebuild coverage, and CI report artifacts. It does not change schema version 1, the public API, or dependencies. Neither the API nor schema has a stable cross-release compatibility promise. Readers and graph retrieval remain separate, evaluation-gated follow-ups.
 
 Use one package and a shared TypeScript core for Node.js and Bun. Both runtimes use pinned better-sqlite3 13.0.3 with sqlite-vec 0.1.9. The [reference analysis](REFERENCE_ANALYSIS.md) records what to retain and change; the [implementation plan](IMPLEMENTATION_PLAN.md) defines the recommended contracts, tasks, and verification gates.
 
@@ -59,7 +59,15 @@ Matches have byte priority. After all selected matches are considered, fitting c
 
 The expansion reads current source/session/sequence metadata on each search, so changing or deleting a turn affects the next search without a rebuild. Returned records remain detached snapshots with their revisions and supplied `observedAt` and `eventAt` values; neither timestamp is reinterpreted as the other.
 
-The Phase 0 100,000-record unfiltered and 50%-selected synthetic warm-hybrid cases missed the provisional p95 threshold; representative workload and budget validation remain open. Phases 2 and 3 add no performance experiment or capacity claim. Continuing to retrieval does not freeze a production format. Inline normalized vector BLOBs with filtered scalar cosine remain the baseline.
+The Phase 0 100,000-record unfiltered and 50%-selected synthetic warm-hybrid cases missed the provisional p95 threshold; representative workload and budget validation remain open. Phase 4's small synthetic evaluation reports local retrieval timings for reproducibility, but does not resolve that original performance gate or establish production capacity. Continuing to retrieval does not freeze a production format. Inline normalized vector BLOBs with filtered scalar cosine remain the baseline.
+
+## Phase 4 Evaluation and Package Boundary
+
+The synthetic evaluator uses 33 independently authored records and 19 queries with manually specified eight-dimensional vectors. It fixes the branch candidate cap at 50, selects at most two matches, limits whole-record text to 180 UTF-8 bytes, and sets neighbor radius to 2. The four internal variants are dense-only, lexical-only, hybrid, and hybrid with neighbors. They share candidate and evidence budgets; evaluation modes are not public search options.
+
+Gold support IDs and query categories stay in the fixture and are not passed to retrieval or the embedding provider. Reports separate annotated support queries, no-answer and unannotated queries, candidate misses, rank cutoffs, budget omissions, neighbor recoveries, and evidence exposure. The fixture checks evaluator plumbing and selected evidence, not semantic model quality, answer correctness, or production latency. The [evaluation notes](EVALUATION.md) record report interpretation and validation status.
+
+The package consumer check builds a temporary tarball, installs it into a separate consumer directory, checks declarations and supported package exports, and exercises native lifecycle and cross-runtime persistence with Node.js and Bun. Version-1 tests cover empty-database initialization, rejection and rollback cases, backup/restore, and rebuilding records into a separate database for a new embedding space. [Upgrade guidance](UPGRADING.md) describes backup/restore and the full model-space rebuild procedure. CI uploads per-matrix Node and Bun evaluation JSON reports; configured lanes remain unexecuted validation until their artifacts are reviewed.
 
 ## Component Boundaries
 
@@ -86,7 +94,7 @@ Keep concrete storage operations and one driver, without a general database plug
 - Initialize schema version 1 only for an empty database, validate namespace and embedding settings before persistent WAL setup, and reject unsupported or foreign schemas without modifying them.
 - Use parameterized SQL and configured extension paths. Never load arbitrary extensions supplied with ingested content.
 
-The [implementation plan](IMPLEMENTATION_PLAN.md) defines lifecycle and retrieval semantics. Phases 2 and 3 own no schema migration: they use the private version-1 schema and retain inline vector BLOBs. Phase 3 adds no dependency or performance experiment. The 100,000-record broad / 50%-selective synthetic warm-hybrid performance gate remains open; retrieval does not freeze a production schema. Only local macOS ARM64 native execution is verified; configured CI lanes are not verification evidence. Neither scalar cosine nor `vec0` should be described as approximate nearest-neighbor search.
+The [implementation plan](IMPLEMENTATION_PLAN.md) defines lifecycle and retrieval semantics. Phases 2–4 use the private version-1 schema and retain inline vector BLOBs; Phase 4 adds test coverage and evaluation tooling, not a schema migration or dependency. The 100,000-record broad / 50%-selective synthetic warm-hybrid performance gate remains open; retrieval does not freeze a production schema. Only local macOS ARM64 native execution is verified; configured CI lanes are not verification evidence. Neither scalar cosine nor `vec0` should be described as approximate nearest-neighbor search.
 
 ## Runtime Boundary
 

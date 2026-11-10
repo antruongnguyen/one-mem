@@ -57,12 +57,16 @@ Use [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for task details, contracts
 
 ## 5. Evaluation and Optional Experiments
 
-- [ ] Compare dense, lexical, hybrid, and hybrid-with-neighbors at equal evidence budgets.
-- [ ] Add distributed/multi-hop, temporal-state, aggregation, conflicting-evidence, and no-answer slices; report complete supporting-source coverage and scope violations.
-- [ ] Record primary, expanded, and final evidence counts and bytes separately; fix actual final prompt tokens and reader settings for later QA comparisons.
-- [ ] Report retrieval quality separately from final-answer quality, plus latency, storage, and model calls.
+- [x] Compare dense, lexical, hybrid, and hybrid-with-neighbors at equal candidate/evidence budgets using production internals.
+- [x] Add independently authored distributed, temporal-state, aggregation, conflicting-evidence, no-answer, Unicode, and byte-boundary slices; report complete support and scope violations.
+- [x] Record branch/union, primary, expanded, and final evidence counts and bytes separately. Final-QA prompt/token controls remain conditional on a reader.
+- [x] Report synthetic retrieval metrics and timing/provider calls separately from unimplemented final QA, with raw samples and source/build/fixture/result hashes; retain Phase 0 storage measurements as a distinct workload.
 - [ ] Prioritize a scoped graph/relational-support experiment for distributed-evidence failures; evaluate hierarchy or reranking against their own diagnosed failures and the plan's promotion criteria.
-- [ ] Keep gold answers, evidence labels, and dataset categories out of runtime retrieval inputs.
+- [x] Keep gold answers, evidence labels, and dataset categories out of runtime/provider inputs.
+- [x] Test locally packed artifacts in an external consumer with strict declarations, native operations, and Node/Bun persistence.
+- [x] Preserve a frozen schema-v1 fixture and verify initialization rollback, backup/restore, and separate-model rebuild; document upgrade gates.
+
+**Phase 4 evidence:** see [EVALUATION.md](EVALUATION.md) for the 33-record/19-query offline baseline and [UPGRADING.md](UPGRADING.md) for maintenance procedures. All mandatory implementation phases are delivered locally; native CI and real-workload release gates remain open.
 
 ## 6. Optional Reader and Evaluation
 
@@ -70,3 +74,13 @@ Use [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for task details, contracts
 - [ ] Record models, datasets, configuration, and licenses for reproducible evaluation.
 - [ ] Measure quality and performance before documenting parity or superiority.
 - [ ] Define release, packaging, and upgrade procedures before enabling publication.
+
+## 7. User Follow-Up Before Release
+
+- [ ] Push/review the feature branch and run all configured native CI lanes; local execution has verified macOS ARM64 only.
+- [ ] Select the real embedding provider and representative licensed records/query-support set, keeping evaluation labels separate from retrieval inputs.
+- [ ] Agree on production size/filter/query-update distributions and a latency budget; revisit the open Phase 0 100k p95 gate with attributed measurements.
+- [ ] Verify backup/recovery in the deployment environment and settle API/schema versioning before removing `private: true`.
+- [ ] Add real old-version migration fixtures before the first schema change; no v1→v2 migration exists yet.
+
+Graph, reranker, hierarchy, tokenizer, model-adapter, and reader additions remain optional experiments with promotion gates, not missing numbered phases.

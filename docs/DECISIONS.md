@@ -94,6 +94,20 @@ All returned records share the same whole-text UTF-8 cap, with matches taking pr
 
 Neighbor discovery, attribution, and detached record construction run inside the existing post-inference read transaction. Metadata moves/deletion affect the next search without a rebuild, while previously returned evidence retains its original text/revision/timestamps. This phase changes no schema, embedding or ranking algorithm, native dependency, performance gate, or platform-support claim.
 
+## D011 — Phase 4 Evaluation and Package Verification
+
+**Status: Implemented locally; external acceptance evidence remains open.** Phase 4 is the final mandatory implementation phase. It adds an independently authored offline fixture, explicit retrieval metrics and stage traces, a packaged-consumer harness, frozen schema-v1 preservation tests, and [upgrade instructions](UPGRADING.md). Optional graph/reranker/hierarchy/tokenizer/model-adapter/reader experiments remain conditional follow-ups, not automatically authorized work after Phase 4.
+
+Use the existing internal storage search path for dense-only, lexical-only, hybrid, and hybrid-with-neighbors. Nullable internal dense/lexical inputs disable a branch without a public mode switch; all variants reuse production SQL, fusion, evidence, and adjacency logic at the same candidate and text-byte budgets. Internal stage IDs are not added to public diagnostics.
+
+The MIT synthetic fixture contains 33 records and 19 queries with a manually designed eight-dimensional embedding map. Gold labels remain outside runtime/provider inputs. Quality denominators include only nonempty support sets; explicit no-answer and unannotated cases are distinct. Recall@k and MRR@k use primary top-k before byte filtering, while evidence recall and complete support use actual final evidence. Stage-loss sets can overlap. [EVALUATION.md](EVALUATION.md) records the results and why they do not establish real-model quality or production latency.
+
+Reports retain fixture/source/build/result hashes, commit/dirty state when available, timing samples, configuration, environment, and real provider-call counts. Query vectors are prepared once for controlled reuse across dense/hybrid variants; lexical-only requires none. A tree without Git reports unavailable metadata rather than a fabricated commit. The final report was regenerated once for this provenance correction, without changing vectors, metrics, or thresholds.
+
+Verify the locally packed tarball in an external temporary consumer, including strict public TypeScript declarations, native extension/FTS behavior, lifecycle/search/context, and persistence between Node and Bun. Keep `private: true`; a passing local consumer test is not publication approval or verification of unexecuted native targets.
+
+Schema remains version 1. Preserve the frozen v1 SQL fixture and test real initialization rollback, backup/restore, and rebuilding from authoritative records into a separate model-space database. A real v1→v2 migration and its upgrade fixtures are required only when that schema change exists. Native CI beyond the local machine, licensed real-model evaluation, and the earlier performance gate remain release prerequisites.
+
 ## Evidence
 
 - [Zero-Mem paper, v1](https://arxiv.org/pdf/2607.29377v1)

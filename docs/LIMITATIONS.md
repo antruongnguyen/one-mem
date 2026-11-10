@@ -2,10 +2,10 @@
 
 ## Current Implementation
 
-- Phase 3 adds optional contiguous same-source/session neighbors to Phase 2 hybrid search, with shared anchor attribution and the existing whole-text UTF-8 budget. Schema version 1 and the shared better-sqlite3/sqlite-vec connection are unchanged.
+- Mandatory implementation phases 0–4 are present: atomic records, scoped hybrid search, bounded session context, offline evaluation, and packaged-consumer/upgrade verification tooling. Schema version 1 and the shared better-sqlite3/sqlite-vec connection are unchanged.
 - The package and schema remain private and provisional. Reopen/persistence and deterministic retrieval/context fixtures are tested, but no compatibility guarantee across releases, retrieval-quality claim, or production capacity claim exists. Entity extraction, graph retrieval, reranking, and final QA are not implemented.
 - Native compatibility fixtures remain separate from schema-v1 ingestion/lifecycle/retrieval tests. The old storage benchmark measures its smaller fixture schema, not the current public search API. Unexecuted CI configuration does not establish platform support.
-- No production performance, accuracy, concurrency, or paper-parity claims have been established.
+- The synthetic [evaluation](EVALUATION.md) is a designed diagnostic fixture, not a real embedding-model or held-out quality benchmark. No production performance, accuracy, concurrency, or paper-parity claims have been established.
 
 ## Runtime and Platform Coverage
 
@@ -23,6 +23,25 @@ The following lanes are **configured, not executed by this local task**. Runner 
 | `ubuntu-24.04` | Linux glibc x64 | Current Node LTS / latest Bun | Unverified; selected versions reported at execution |
 
 Both executables must be on PATH for the compatibility suites. Cross-runtime tests fail rather than skip when either is missing. Windows ARM64 is out of scope, with no compatibility work planned; Linux musl has no configured lane and remains unverified.
+
+### Phase 4 local verification record — 2026-11-10
+
+Verified locally on macOS ARM64 with Node.js 22.23.3 and Bun 1.4.4. A clean staged-file export without `.git`, ignored references/probes, or prebuilt output passed:
+
+| Check | Result |
+| --- | --- |
+| `bun install --frozen-lockfile` | Passed; native dependencies unchanged |
+| `bun run typecheck`, `bun run build`, `bun run test:build` | Passed |
+| `bun run test:node` | 131 passed, 0 failed, 0 skipped |
+| `bun run test:bun` | 131 passed, 0 failed across 12 files; no skipped cases |
+| `bun run test:package` | Actual tarball installed into an external consumer; strict declarations, export boundaries, native lifecycle/search/context, and persistence in both runtime directions passed |
+| `bun run eval:node` / `bun run eval:bun` | Passed; source/dist/result hashes match the recorded baseline, with Git metadata correctly unavailable in the export |
+| Built entry and README example | Passed in Node and Bun |
+| Documented backup example | Ran in both runtimes; resulting backups retained frozen revisions and retrieval behavior |
+
+The 131 cases retain the previous 118 and add nine evaluator/provenance cases plus four schema-v1 maintenance cases. The packaged-consumer harness is a separate check and inspects the actual archive's 16 compiled JS/declaration files plus README, LICENSE, and manifest; it excludes source/tests/probes/databases and verifies the installed entry by package name.
+
+Independent review found no actionable code issues and recomputed the report metrics/hashes from actual IDs and bytes. A minor fixture-section description was corrected in the evaluation document. These are local results only: no native CI jobs, real-model evaluation, publication, push, or merge occurred. See [EVALUATION.md](EVALUATION.md) and [UPGRADING.md](UPGRADING.md) for reproducible procedures and remaining gates.
 
 ### Phase 3 local verification record — 2026-11-10
 
@@ -117,6 +136,8 @@ Phase 2 likewise adds functionality without repeating the benchmark or changing 
 
 Phase 3 adds context correctness tests without repeating those measurements. Neighbor expansion has no measured production latency or quality benefit yet; it does not resolve the earlier 100k gate or demonstrate parity with the paper's graph/hierarchy closure.
 
+Phase 4 evaluates only 33 authored records/19 queries with manual eight-dimensional vectors, cap 50, limit 2, and 180 evidence bytes. Its tiny warm-cache timings include internal trace collection and cannot replace the earlier 100k/384-dimensional evidence. The final reports were regenerated once to correct provenance metadata, not to select better timing results. No real model, licensed external corpus, reader, or paid API was used. Scope checks passed locally, but no-answer cases still returned evidence in some variants; the core does not promise abstention or factual reasoning.
+
 The reference uses English-oriented NER and query heuristics. Multilingual support, including Vietnamese input, requires its own validation. Embedding models, entity extraction, vector dimensions, and reader budgets remain open choices.
 
 Reference benchmark figures are reported by the paper, not measurements of one-mem. A future comparison must record dataset versions, models, settings, and evaluation scripts. “Zero-token” refers to avoiding generative LLM calls in memory operations, not free embeddings or final QA.
@@ -150,7 +171,14 @@ Database encryption, access control, retention, and production deployment are no
 - Match selection consumes the byte budget first. The match limit does not cap the combined match/context count, but every returned record shares the same whole-text UTF-8 cap. Relevant context may be omitted for size; omission does not remove the stored record or create an ordinal gap.
 - Context has null relevance score and empty branch ranks. Its `anchorIds` identify selected matches that requested it, not proof that it is relevant or factually supports an answer. Shared context uses bytes once; identical text under different record IDs remains distinct evidence.
 - `budgetOmitted` counts distinct IDs inspected and rejected for bytes across match/context selection. It does not count all unreturned database rows or records excluded only by the match limit. A context record already rejected during the match pass is not counted again.
-- Results are detached snapshots from one read transaction after query inference. Later changes affect subsequent searches; they do not rewrite old evidence. Stored observation/event times are preserved and do not establish chronological fact precedence. Evaluation, real-model quality, crash recovery, and additional platform evidence remain pending.
+- Results are detached snapshots from one read transaction after query inference. Later changes affect subsequent searches; they do not rewrite old evidence. Stored observation/event times are preserved and do not establish chronological fact precedence. Real-model quality, crash recovery, and additional platform evidence remain pending.
+
+## Remaining Acceptance and Release Work
+
+- Run the configured native CI lanes, including packaged-artifact installation and evaluation, before expanding support statements beyond local macOS ARM64. No remote jobs ran during this implementation; Windows ARM64 remains excluded and Linux musl remains unverified.
+- Choose a real embedding provider and representative licensed corpus/query-support set. Keep held-out labels separate, measure provider cost/latency and complete evidence coverage, and agree on the production workload and latency budget. The Phase 0 p95 gate is still open.
+- The schema-v1 fixture and rollback/backup/rebuild tests do not implement a v1→v2 migration. Add genuine old-version upgrade tests before the first future schema change. Follow [UPGRADING.md](UPGRADING.md); live-file copying and power-loss recovery are not validated.
+- Keep publication disabled until the native matrix, compatibility/versioning policy, backup process, and workload gates are accepted. Optional experiments require their documented trigger and a focused follow-up plan; the synthetic fixture alone does not justify implementing them.
 
 ## Sources
 

@@ -2,11 +2,11 @@
 
 An independent TypeScript implementation inspired by [Zero-Mem: Zero-Token Memory Operations for LLM Agents](https://arxiv.org/pdf/2607.29377), targeting Node.js and Bun with SQLite and [sqlite-vec](https://alexgarcia.xyz/sqlite-vec/js.html).
 
-**Status: Phase 3 — scoped hybrid search and bounded session context.** The private package provides `openMemory`, `upsert`, `get`, `remove`, `search`, and `close`, backed by an experimental version-1 schema. The API requires an injected cosine embedding provider. Search can add up to two consecutive records on either side of selected matches from the same source and session. Matches retain priority under the existing whole-record UTF-8 text-byte budget. The API and schema have no stable cross-release compatibility promise; Phase 3 does not change schema version 1. Graph retrieval, a reader, and retrieval-quality claims remain evaluation-gated.
+**Status: Phase 4 implemented; external CI validation is pending.** The private package provides `openMemory`, `upsert`, `get`, `remove`, `search`, and `close`, backed by an experimental version-1 schema. The API requires an injected cosine embedding provider. Search can add up to two consecutive records on either side of selected matches from the same source and session. Matches retain priority under the existing whole-record UTF-8 text-byte budget. Phase 4 adds offline synthetic evaluation, installed-package consumer checks, version-1 initialization and rollback coverage, backup/restore and model-space rebuild guidance, and CI evaluation report artifacts. It does not change the public API, schema version, or dependencies. The API and schema have no stable cross-release compatibility promise. Real-model retrieval quality, graph retrieval, a reader, and production performance remain unverified; configured CI lanes are not evidence of platform support. See [evaluation](docs/EVALUATION.md), [upgrade guidance](docs/UPGRADING.md), and [limitations](docs/LIMITATIONS.md).
 
 ## Direction
 
-The longer-term direction is a local, persistent memory system whose indexing and retrieval do not call a generative LLM. Phase 2 combines scoped scalar cosine ranking with FTS5 lexical ranking; Phase 3 can expand selected matches to nearby session records within the same text-byte budget. An optional final reader remains a later phase. Entity graphs and richer temporal structures are experiments that require evaluation before adoption.
+The longer-term direction is a local, persistent memory system whose indexing and retrieval do not call a generative LLM. Phase 2 combines scoped scalar cosine ranking with FTS5 lexical ranking; Phase 3 can expand selected matches to nearby session records within the same text-byte budget. Phase 4 evaluates dense-only, lexical-only, hybrid, and hybrid-with-neighbors retrieval through internal evaluation entry points; it adds no public mode. An optional final reader remains a later phase. Entity graphs and richer temporal structures are experiments that require evaluation before adoption.
 
 “Zero-token” does not mean zero embedding cost, computation, storage, or final-reader cost. This project does not claim to reproduce the paper's benchmark results.
 
@@ -69,7 +69,7 @@ try {
 
 Each match retains its source-bearing record, revision, dense and lexical ranks when present, and RRF score. Context records retain their own source and revision provenance; context shared by selected matches keeps attribution to those matches and appears only once. Evidence diagnostics report branch candidate counts, lexical terms used and whether token extraction was truncated, bytes used, and distinct records omitted by the evidence budget. Search filters are applied before each ranking branch's candidate cap. Dense candidates use scalar cosine distance; lexical input is compiled into up to 32 distinct Unicode letter/number/underscore tokens as literal FTS5 phrases. Punctuation-only queries can still use dense retrieval. Reciprocal rank fusion uses constant 60. An empty eligible corpus returns empty evidence without calling the query provider. Cancellation, embedding-space validation, and per-handle operation queuing follow the same lifecycle rules as writes.
 
-Matches, their adjacent context, and detached evidence are materialized in one read transaction after query embedding. Updates, deletes, or source/session/sequence moves take effect on the next search; already returned items keep their revision and supplied timestamps. Phase 3 adds no schema or dependency and makes no graph, reader, multilingual retrieval-quality, or production-capacity claim. The Phase 0 performance gate remains open; this phase adds no new performance experiment.
+Matches, their adjacent context, and detached evidence are materialized in one read transaction after query embedding. Updates, deletes, or source/session/sequence moves take effect on the next search; already returned items keep their revision and supplied timestamps. Phase 4 keeps the API, schema version 1, and dependencies unchanged. Its small synthetic fixture checks evaluator behavior and retrieval evidence; its timings do not establish real-model quality or production performance. The original Phase 0 performance gate remains open; see [evaluation](docs/EVALUATION.md) and [limitations](docs/LIMITATIONS.md).
 
 Use a new record ID for each observation so conflicting statements remain separately attributable. Reuse an ID only to explicitly correct that same source record; its replacement gets a new revision, and the old content is not retained.
 
@@ -84,11 +84,14 @@ bun run build
 bun run test:build
 bun run test:node
 bun run test:bun
+bun run test:package
+bun run eval:node
+bun run eval:bun
 node dist/index.js
 bun dist/index.js
 ```
 
-The suites use the same compiled `node:test` fixtures with Node's test runner and Bun's `bun test` runner. Install both runtimes: persistence tests exchange database files through child processes and fail if the other runtime is unavailable. The last two commands check that the public entry module loads; they produce no output. The package remains private, with no application server or CLI. Commit `bun.lock` when changing dependencies.
+The suites use the same compiled `node:test` fixtures with Node's test runner and Bun's `bun test` runner. Run the evaluator after `test:build`; it uses independently authored synthetic records, queries, and manual vectors, without a model or network call. The package consumer harness builds and installs a temporary tarball and checks it from outside the repository. Install both runtimes: persistence tests exchange database files through child processes and fail if the other runtime is unavailable. The final two commands check that the public entry module loads; they produce no output. The package remains private, with no application server or CLI. Commit `bun.lock` when changing dependencies.
 
 ## Runtime and Storage Targets
 
@@ -99,15 +102,17 @@ The suites use the same compiled `node:test` fixtures with Node's test runner an
 
 Internal storage uses this single driver, loads sqlite-vec, preserves bigint row keys, enables foreign keys and a 5,000 ms busy timeout, and uses WAL for local file databases. Native loading failures preserve their cause. Phase 1 stores records, normalized vector BLOBs, and FTS5 entries in one private versioned schema; namespace and embedding-space settings are checked when opening it. Phase 0 compatibility fixtures remain for native driver checks, while durable schema ownership now belongs to storage. The schema is experimental and does not promise compatibility across releases.
 
-CI is configured for Windows x64, Linux glibc x64/ARM64, and macOS x64/ARM64. Configuration alone is not verified support; see [limitations](docs/LIMITATIONS.md) for actual evidence. Windows ARM64 is excluded. See [benchmarks](docs/BENCHMARKS.md) for existing layout comparisons and the reproducible file-backed Phase 0 measurement.
+CI is configured for Windows x64, Linux glibc x64/ARM64, and macOS x64/ARM64. It retains Node and Bun synthetic evaluation reports per matrix lane. Configuration alone is not verified support; only local macOS ARM64 native execution has been verified. See [limitations](docs/LIMITATIONS.md) for actual evidence. Windows ARM64 is excluded. See [benchmarks](docs/BENCHMARKS.md) for existing layout comparisons and the reproducible file-backed Phase 0 measurement.
 
 ## Repository Map
 
 - `src/` — TypeScript source; private record lifecycle and internal SQLite storage.
 - `dist/` — generated JavaScript and declarations, ignored by Git.
 - `tests/` — native compatibility, ingestion, input, lifecycle, retrieval, and evidence fixtures; compiled into ignored `.test-dist/`.
-- `scripts/` — shared test launcher and file-backed storage benchmark.
+- `scripts/` — shared test launcher, offline synthetic evaluator, installed-package consumer, and file-backed storage benchmark.
 - [Architecture](docs/ARCHITECTURE.md) — record lifecycle, hybrid retrieval, evidence bounds, and storage invariants.
+- [Evaluation](docs/EVALUATION.md) — synthetic evaluator method, report fields, and quality/performance limitations.
+- [Upgrade guidance](docs/UPGRADING.md) — version-1 backup/restore and embedding-space rebuild guidance.
 - [Reference analysis](docs/REFERENCE_ANALYSIS.md) — lessons from Zero-Mem and alternatives.
 - [Paper analysis](docs/PAPER_ANALYSIS.md) — paper findings, experimental limits, and implications for one-mem.
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md) — recommended design, tasks, and acceptance checks.

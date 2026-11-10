@@ -85,3 +85,19 @@ jobs:
 
       - name: Import built entry with Bun
         run: bun -e "await import('./dist/index.js')"
+
+      - run: bun run test:package
+
+      - name: Evaluate synthetic fixtures with Node
+        run: bun run eval:node > evaluation-node.json
+
+      - name: Evaluate synthetic fixtures with Bun
+        run: bun run eval:bun > evaluation-bun.json
+
+      - name: Retain synthetic evaluation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evaluation-${{ matrix.name }}
+          path: evaluation-*.json
+          if-no-files-found: ignore

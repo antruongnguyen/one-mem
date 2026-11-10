@@ -24,7 +24,10 @@
     "typecheck": "tsc --noEmit",
     "test:build": "bun run build && tsc -p tsconfig.test.json",
     "test:node": "node scripts/run-tests.mjs",
-    "test:bun": "bun scripts/run-tests.mjs"
+    "test:bun": "bun scripts/run-tests.mjs",
+    "test:package": "node scripts/test-package.mjs",
+    "eval:node": "node scripts/evaluate.mjs",
+    "eval:bun": "bun scripts/evaluate.mjs"
   },
   "devDependencies": {
     "@types/better-sqlite3": "9.6.0",

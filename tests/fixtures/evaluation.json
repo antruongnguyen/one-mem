@@ -1,0 +1,1086 @@
+{
+  "id": "one-mem-authored-synthetic",
+  "version": 1,
+  "license": "MIT",
+  "authorship": "Independently authored for one-mem; no copied datasets or prompts.",
+  "purpose": "Deterministic plumbing and evidence-retrieval exercise; vectors specify synthetic behavior, not model quality or a held-out benchmark. The oversized-note slice is designed whole-record byte-budget boundary coverage, not tuning for quality gain.",
+  "namespace": "evaluation-v1",
+  "embeddingSpace": {
+    "id": "one-mem-synthetic-v1/eight-axis/manual-map/float32-cosine",
+    "dimensions": 8,
+    "metric": "cosine"
+  },
+  "config": {
+    "candidateLimit": 50,
+    "limit": 2,
+    "maxEvidenceBytes": 180,
+    "neighbors": 2
+  },
+  "inputs": {
+    "records": [
+      {
+        "id": "rare-1",
+        "sourceId": "inventory",
+        "text": "Dr. Quỳnh Tạ reserved crate ZX_4819 containing 37 sensors."
+      },
+      {
+        "id": "rare-2",
+        "sourceId": "inventory",
+        "text": "Dr. Quinn Taylor reserved crate ZX_4818 containing 73 sensors."
+      },
+      {
+        "id": "rare-3",
+        "sourceId": "inventory",
+        "text": "The temporary inventory desk opens at 09:00."
+      },
+      {
+        "id": "para-1",
+        "sourceId": "support",
+        "text": "The account is locked after five unsuccessful sign-in attempts."
+      },
+      {
+        "id": "para-2",
+        "sourceId": "support",
+        "text": "Resetting a forgotten password does not unlock a disabled account."
+      },
+      {
+        "id": "bridge-1",
+        "sourceId": "directory",
+        "text": "Naila directs the Marlin expedition."
+      },
+      {
+        "id": "bridge-2",
+        "sourceId": "shipping",
+        "text": "The Marlin expedition chartered the vessel Kestrel."
+      },
+      {
+        "id": "bridge-3",
+        "sourceId": "fleet",
+        "text": "Kestrel uses the harbor at Stonebay."
+      },
+      {
+        "id": "bridge-wrong",
+        "sourceId": "fleet",
+        "text": "The vessel Osprey uses the harbor at Reedport."
+      },
+      {
+        "id": "cause-1",
+        "sourceId": "incident",
+        "text": "The pump stopped because its inlet filter was blocked.",
+        "sessionId": "outage",
+        "sequence": 0
+      },
+      {
+        "id": "cause-2",
+        "sourceId": "incident",
+        "text": "That pump supplied cooling water to kiln 4.",
+        "sessionId": "outage",
+        "sequence": 1
+      },
+      {
+        "id": "cause-3",
+        "sourceId": "incident",
+        "text": "Without cooling water kiln 4 shut down.",
+        "sessionId": "outage",
+        "sequence": 2
+      },
+      {
+        "id": "cause-4",
+        "sourceId": "incident",
+        "text": "The next shift recorded a routine handover.",
+        "sessionId": "outage",
+        "sequence": 3
+      },
+      {
+        "id": "cause-distant",
+        "sourceId": "incident",
+        "text": "A later audit found the blocked inlet came from torn packaging.",
+        "sessionId": "outage",
+        "sequence": 6
+      },
+      {
+        "id": "cause-other-session",
+        "sourceId": "incident",
+        "text": "The generator stopped because its fuel tank was empty.",
+        "sessionId": "generator",
+        "sequence": 0
+      },
+      {
+        "id": "cause-other-source",
+        "sourceId": "maintenance",
+        "text": "The pump stopped because a wiring relay failed.",
+        "sessionId": "outage",
+        "sequence": 0
+      },
+      {
+        "id": "temporal-old",
+        "sourceId": "assignment",
+        "text": "On 2026-01-10, Mira managed the Beacon account.",
+        "observedAt": "2026-01-10T12:00:00Z",
+        "eventAt": "2026-01-10T09:00:00Z"
+      },
+      {
+        "id": "temporal-new",
+        "sourceId": "assignment",
+        "text": "On 2026-04-02, Leon replaced Mira as manager of the Beacon account.",
+        "observedAt": "2026-04-02T12:00:00Z",
+        "eventAt": "2026-04-02T09:00:00Z"
+      },
+      {
+        "id": "temporal-other",
+        "sourceId": "assignment",
+        "text": "Mira manages the Lantern account."
+      },
+      {
+        "id": "agg-1",
+        "sourceId": "orders",
+        "text": "Order L71 contains 4 cobalt tiles."
+      },
+      {
+        "id": "agg-2",
+        "sourceId": "orders",
+        "text": "Order L72 contains 6 cobalt tiles."
+      },
+      {
+        "id": "agg-3",
+        "sourceId": "orders",
+        "text": "Order L73 contains 3 cobalt tiles."
+      },
+      {
+        "id": "agg-wrong",
+        "sourceId": "orders",
+        "text": "Order L74 contains 8 copper tiles."
+      },
+      {
+        "id": "duplicate-a",
+        "sourceId": "notice-a",
+        "text": "The east entrance closes at 18:30."
+      },
+      {
+        "id": "duplicate-b",
+        "sourceId": "notice-b",
+        "text": "The east entrance closes at 18:30."
+      },
+      {
+        "id": "no-metadata",
+        "sourceId": "notes",
+        "text": "The violet sample was stored in cabinet V9."
+      },
+      {
+        "id": "vi-1",
+        "sourceId": "lab",
+        "text": "Ngọc đánh dấu mẫu Q_2048 bằng nhãn tím.",
+        "sessionId": "ngay-1",
+        "sequence": 0
+      },
+      {
+        "id": "vi-2",
+        "sourceId": "lab",
+        "text": "Mẫu đó được chuyển vào tủ lạnh số 12.",
+        "sessionId": "ngay-1",
+        "sequence": 1
+      },
+      {
+        "id": "vi-other",
+        "sourceId": "other-lab",
+        "text": "Ngọc đánh dấu mẫu Q_2048 bằng nhãn xanh.",
+        "sessionId": "ngay-1",
+        "sequence": 0
+      },
+      {
+        "id": "noise-1",
+        "sourceId": "misc",
+        "text": "Lunch today includes lentil soup."
+      },
+      {
+        "id": "noise-2",
+        "sourceId": "misc",
+        "text": "The garden gate is painted amber."
+      },
+      {
+        "id": "noise-3",
+        "sourceId": "misc",
+        "text": "A spare keyboard is in the stationery drawer."
+      },
+      {
+        "id": "oversized-note",
+        "sourceId": "budget-boundary",
+        "text": "Inspection note ZX_BUDGET_180: the violet archive box is stored on shelf 7. This atomic note includes the complete handling instruction: retain the original label, keep the box upright, avoid direct sunlight, and return it to the same shelf after inspection."
+      }
+    ],
+    "queries": [
+      {
+        "id": "exact-name",
+        "text": "Quỳnh Tạ ZX_4819 37",
+        "scope": {
+          "sourceId": "inventory"
+        }
+      },
+      {
+        "id": "paraphrase",
+        "text": "Why can I no longer access my profile after several bad login tries?",
+        "scope": {
+          "sourceId": "support"
+        }
+      },
+      {
+        "id": "bridge",
+        "text": "Which harbor serves the vessel used by the expedition directed by Naila?",
+        "scope": {}
+      },
+      {
+        "id": "bridge-scoped",
+        "text": "What does the directory say Naila directs?",
+        "scope": {
+          "sourceId": "directory"
+        }
+      },
+      {
+        "id": "causal",
+        "text": "Why did kiln 4 shut down during the pump incident?",
+        "scope": {
+          "sourceId": "incident",
+          "sessionId": "outage"
+        }
+      },
+      {
+        "id": "causal-distant",
+        "text": "What packaging problem caused the kiln outage?",
+        "scope": {
+          "sourceId": "incident",
+          "sessionId": "outage"
+        }
+      },
+      {
+        "id": "current",
+        "text": "Who manages the Beacon account as of 2026-05-01?",
+        "scope": {
+          "sourceId": "assignment"
+        }
+      },
+      {
+        "id": "as-of",
+        "text": "Who managed the Beacon account as of 2026-02-01?",
+        "scope": {
+          "sourceId": "assignment"
+        }
+      },
+      {
+        "id": "aggregate",
+        "text": "How many cobalt tiles are in orders L71, L72 and L73 combined?",
+        "scope": {
+          "sourceId": "orders"
+        }
+      },
+      {
+        "id": "duplicates",
+        "text": "When does the east entrance close?",
+        "scope": {}
+      },
+      {
+        "id": "missing-metadata",
+        "text": "Where was the violet sample stored?",
+        "scope": {
+          "sourceId": "notes"
+        }
+      },
+      {
+        "id": "vietnamese",
+        "text": "Mẫu Q_2048 có nhãn màu gì và được chuyển đi đâu?",
+        "scope": {
+          "sourceId": "lab",
+          "sessionId": "ngay-1"
+        }
+      },
+      {
+        "id": "session-isolation",
+        "text": "Why did the generator stop?",
+        "scope": {
+          "sourceId": "incident",
+          "sessionId": "generator"
+        }
+      },
+      {
+        "id": "no-answer",
+        "text": "What is the launch code for the orbital capsule?",
+        "scope": {}
+      },
+      {
+        "id": "no-answer-vi",
+        "text": "Mật khẩu của vệ tinh là gì?",
+        "scope": {
+          "sourceId": "lab"
+        }
+      },
+      {
+        "id": "empty-scope",
+        "text": "What was stored in the missing source?",
+        "scope": {
+          "sourceId": "absent"
+        }
+      },
+      {
+        "id": "unannotated",
+        "text": "Show the routine handover note.",
+        "scope": {
+          "sourceId": "incident",
+          "sessionId": "outage"
+        }
+      },
+      {
+        "id": "unannotated-absent",
+        "text": "Show miscellaneous observations.",
+        "scope": {}
+      },
+      {
+        "id": "oversized-boundary",
+        "text": "Where is the violet archive box from inspection note ZX_BUDGET_180 stored?",
+        "scope": {
+          "sourceId": "budget-boundary"
+        }
+      }
+    ]
+  },
+  "embeddings": {
+    "document": [
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0
+      ]
+    ],
+    "query": [
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0
+      ]
+    ]
+  },
+  "annotations": {
+    "exact-name": {
+      "gold": [
+        "rare-1"
+      ],
+      "slices": [
+        "english",
+        "rare-identifiers"
+      ],
+      "subjectExposureIds": [
+        "rare-2"
+      ]
+    },
+    "paraphrase": {
+      "gold": [
+        "para-1"
+      ],
+      "slices": [
+        "english",
+        "paraphrase"
+      ]
+    },
+    "bridge": {
+      "gold": [
+        "bridge-1",
+        "bridge-2",
+        "bridge-3"
+      ],
+      "slices": [
+        "english",
+        "distributed-relational",
+        "beyond-neighbors"
+      ],
+      "subjectExposureIds": [
+        "bridge-wrong"
+      ]
+    },
+    "bridge-scoped": {
+      "gold": [
+        "bridge-1"
+      ],
+      "slices": [
+        "english",
+        "source-isolation"
+      ],
+      "boundaryExposureIds": [
+        "bridge-2",
+        "bridge-3"
+      ]
+    },
+    "causal": {
+      "gold": [
+        "cause-1",
+        "cause-2",
+        "cause-3"
+      ],
+      "slices": [
+        "english",
+        "causal",
+        "contiguous-context"
+      ],
+      "boundaryExposureIds": [
+        "cause-other-session",
+        "cause-other-source"
+      ]
+    },
+    "causal-distant": {
+      "gold": [
+        "cause-1",
+        "cause-2",
+        "cause-3",
+        "cause-distant"
+      ],
+      "slices": [
+        "english",
+        "causal",
+        "beyond-neighbors",
+        "sequence-gap"
+      ]
+    },
+    "current": {
+      "gold": [
+        "temporal-new"
+      ],
+      "slices": [
+        "english",
+        "temporal-current"
+      ],
+      "temporalExposureIds": [
+        "temporal-old"
+      ],
+      "subjectExposureIds": [
+        "temporal-other"
+      ]
+    },
+    "as-of": {
+      "gold": [
+        "temporal-old"
+      ],
+      "slices": [
+        "english",
+        "temporal-as-of"
+      ],
+      "temporalExposureIds": [
+        "temporal-new"
+      ],
+      "subjectExposureIds": [
+        "temporal-other"
+      ]
+    },
+    "aggregate": {
+      "gold": [
+        "agg-1",
+        "agg-2",
+        "agg-3"
+      ],
+      "slices": [
+        "english",
+        "aggregation"
+      ],
+      "subjectExposureIds": [
+        "agg-wrong"
+      ]
+    },
+    "duplicates": {
+      "gold": [
+        "duplicate-a",
+        "duplicate-b"
+      ],
+      "slices": [
+        "english",
+        "independent-duplicates"
+      ]
+    },
+    "missing-metadata": {
+      "gold": [
+        "no-metadata"
+      ],
+      "slices": [
+        "english",
+        "missing-metadata"
+      ]
+    },
+    "vietnamese": {
+      "gold": [
+        "vi-1",
+        "vi-2"
+      ],
+      "slices": [
+        "vietnamese",
+        "rare-identifiers",
+        "contiguous-context"
+      ],
+      "boundaryExposureIds": [
+        "vi-other"
+      ]
+    },
+    "session-isolation": {
+      "gold": [
+        "cause-other-session"
+      ],
+      "slices": [
+        "english",
+        "session-isolation"
+      ],
+      "boundaryExposureIds": [
+        "cause-1",
+        "cause-other-source"
+      ]
+    },
+    "no-answer": {
+      "gold": [],
+      "slices": [
+        "english",
+        "no-answer"
+      ]
+    },
+    "no-answer-vi": {
+      "gold": [],
+      "slices": [
+        "vietnamese",
+        "no-answer"
+      ]
+    },
+    "empty-scope": {
+      "gold": [],
+      "slices": [
+        "english",
+        "source-isolation",
+        "no-answer"
+      ]
+    },
+    "unannotated": {
+      "gold": null,
+      "slices": [
+        "english",
+        "unannotated"
+      ]
+    },
+    "unannotated-absent": {
+      "slices": [
+        "english",
+        "unannotated"
+      ]
+    },
+    "oversized-boundary": {
+      "gold": [
+        "oversized-note"
+      ],
+      "slices": [
+        "english",
+        "designed-byte-budget-boundary"
+      ],
+      "note": "Designed whole-record byte-budget boundary coverage, not tuning for quality gain."
+    }
+  }
+}

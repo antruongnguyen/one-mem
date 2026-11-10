@@ -293,17 +293,17 @@ function readSessionNeighbors(db: Database.Database, anchor: MemoryRecord, radiu
   return records;
 }
 
-export function searchStoredRecords(db: Database.Database, vector: Buffer, match: string | null,
+export function searchStoredRecords(db: Database.Database, vector: Buffer | null, match: string | null,
   scope: Scope, candidateLimit: number, limit: number, maxEvidenceBytes: number, neighbors = 0,
 ) {
   const filter = scopeFilter(scope);
   try {
     return db.transaction(() => {
-      if (db.prepare(`SELECT 1 FROM records r WHERE ${filter.sql} AND length(r.embedding) != ? LIMIT 1`)
+      if (vector !== null && db.prepare(`SELECT 1 FROM records r WHERE ${filter.sql} AND length(r.embedding) != ? LIMIT 1`)
         .get(...filter.parameters, vector.length)) {
         throw new MemoryError("EMBEDDING_MISMATCH", "A stored vector length does not match the embedding space.");
       }
-      const dense = db.prepare<unknown[], { id: string; distance: number | null }>(`
+      const dense = vector === null ? [] : db.prepare<unknown[], { id: string; distance: number | null }>(`
         SELECT r.id, vec_distance_cosine(r.embedding, ?) AS distance FROM records r
         WHERE ${filter.sql} ORDER BY distance ASC, r.id COLLATE BINARY ASC LIMIT ?
       `).all(vector, ...filter.parameters, candidateLimit);
@@ -320,9 +320,21 @@ export function searchStoredRecords(db: Database.Database, vector: Buffer, match
         if (!stored) throw new MemoryError("DATABASE_MISMATCH", "A candidate has no source record.");
         return { ...candidate, record: stored.record };
       });
-      return { ...selectEvidence(candidates, limit, maxEvidenceBytes,
-        neighbors === 0 ? undefined : record => readSessionNeighbors(db, record, neighbors)),
-        denseCandidates: dense.length, lexicalCandidates: lexical.length };
+      const neighborCandidateIds = new Set<string>();
+      const evidence = selectEvidence(candidates, limit, maxEvidenceBytes,
+        neighbors === 0 ? undefined : record => {
+          const adjacent = readSessionNeighbors(db, record, neighbors);
+          adjacent.forEach(neighbor => neighborCandidateIds.add(neighbor.id));
+          return adjacent;
+        });
+      return { ...evidence, denseCandidates: dense.length, lexicalCandidates: lexical.length,
+        // Internal evaluation traces; Memory.search exposes only its explicit public diagnostics.
+        denseIds: dense.map(row => row.id), lexicalIds: lexical.map(row => row.id),
+        rankedIds: candidates.map(candidate => candidate.id),
+        primaryTopKIds: candidates.slice(0, limit).map(candidate => candidate.id),
+        selectedMatchIds: evidence.items.filter(item => item.role === "match").map(item => item.record.id),
+        neighborCandidateIds: [...neighborCandidateIds],
+        returnedContextIds: evidence.items.filter(item => item.role === "context").map(item => item.record.id) };
     })();
   } catch (cause) { throw sqliteError(cause); }
 }
