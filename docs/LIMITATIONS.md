@@ -25,6 +25,8 @@ Do not omit optional dependencies when installing sqlite-vec: its platform binar
 
 ## Research and Data
 
+The user selected 10,000 and 100,000 records as initial evaluation sizes while production volume remains unknown. [Local benchmarks](BENCHMARKS.md) use synthetic 384-dimensional vectors and warm in-memory queries. They do not measure disk behavior, embedding generation, FTS5/RRF, concurrency, or full application latency, and do not establish a capacity guarantee.
+
 The reference uses English-oriented NER and query heuristics. Multilingual support, including Vietnamese input, requires its own validation. Embedding models, entity extraction, vector dimensions, and reader budgets remain open choices.
 
 Reference benchmark figures are reported by the paper, not measurements of one-mem. A future comparison must record dataset versions, models, settings, and evaluation scripts. “Zero-token” refers to avoiding generative LLM calls in memory operations, not free embeddings or final QA.

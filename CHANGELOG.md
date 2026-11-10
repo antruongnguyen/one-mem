@@ -9,6 +9,7 @@
 
 ### Added
 
+- Added local 10,000/100,000-record vector benchmarks with metadata selectivity, matched runtime results, and explicit measurement limits.
 - Added source-based reference analysis, an implementation plan, and isolated local SQLite compatibility evidence.
 - Bootstrapped the TypeScript ES module package and its Bun install, typecheck, and build setup.
 - Added Git ignore rules, project documentation, and an MIT license.

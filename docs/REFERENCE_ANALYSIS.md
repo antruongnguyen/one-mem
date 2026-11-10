@@ -183,9 +183,9 @@ At large corpora, benchmark vector scanning before choosing an acceleration stra
 
 A throwaway local probe on macOS arm64 verified the shared driver with Node 22.23.3 and Bun 1.4.4, `better-sqlite3` 13.0.3, sqlite-vec 0.1.9, and SQLite 3.53.4.
 It passed extension loading, FTS5, scoped retrieval, rollback, update/delete, reopen, and Node↔Bun persistence. The root package still contains none of this implementation.
-A small 384-dimension, top-10, half-corpus-filtered comparison found `vec0` faster: at 10k records, scalar/`vec0` median query time was approximately 3.07/1.83 ms under Node and 3.08/1.79 ms under Bun; result orders matched.
-This used three deterministic non-tied queries, two warmups per query, and 15 measured samples, so it is evidence about that local workload only.
-The simpler scalar layout remains reasonable when it fits the real latency budget; retain the measured advantage as a reason to revisit `vec0` at larger scale.
+The expanded [local benchmark](BENCHMARKS.md) uses the user-selected 10,000 and 100,000 records and tests unfiltered, 50%, and 1% metadata scopes. It favors `vec0` for broad scans and indexed scalar queries for selective filters; neither is universally faster.
+These are warm in-memory vector-only measurements with synthetic data, not production capacity or end-to-end memory retrieval results.
+The simpler scalar layout remains the initial recommendation, subject to the real workload and latency budget. Revisit `vec0` when broad searches dominate; account for metadata-filter behavior and atomic lifecycle maintenance as well as query latency.
 Both scalar vectors and queries require finite, nonzero Float32 validation: dimension/byte-length checks alone accept NaN, Infinity, or zero vectors, whose cosine distance can be SQL NULL and sort ahead of valid distances.
 
 The dual-driver option has a specific macOS cost: Bun's system SQLite cannot load extensions, so `bun:sqlite` requires a custom SQLite library configured before opening a connection.

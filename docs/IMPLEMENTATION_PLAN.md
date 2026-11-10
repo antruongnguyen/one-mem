@@ -18,10 +18,12 @@
 
 The user asked to learn implementation ideas and recommend better-fitting options. Phase 0 settles the remaining storage choices with evidence; the later experiments have promotion gates rather than an obligation to reproduce reference subsystems.
 
+**Confirmed evaluation sizes:** the user selected 10,000 and 100,000 records as the initial comparison points because production volume is not yet known. These are benchmark workloads, not supported-capacity guarantees.
+
 | Choice | Initial recommendation | Cost / alternative |
 | --- | --- | --- |
 | Driver | Shared `better-sqlite3` | Already works in a local two-runtime probe; dual drivers remain a fallback if platform tests fail |
-| Vector layout | Inline BLOB + scalar cosine initially | Locally `vec0` was faster; promote it when realistic corpus latency justifies synchronized separate vector writes |
+| Vector layout | Inline BLOB + scalar cosine initially | Local results favor `vec0` for broad scans and indexed scalar queries for selective filters; choose against the expected workload before freezing storage |
 | Isolation | One namespace per DB | Separate FTS statistics and simpler configuration; more files and no cross-namespace query |
 | Embeddings | Required injected provider | Caller owns model access, credentials, retries, batching, and privacy; no turnkey model download |
 | Offline model | Optional later integration | Useful offline, but model assets, tokenizer/pooling parity, native/WASM support, and package size must be measured |
@@ -259,7 +261,7 @@ process.exit(result.status ?? 1);
 
 - [ ] Run `bun run test:build`, then `node --test .test-dist/storage-compatibility.test.js` and `bun test .test-dist/storage-compatibility.test.js`; record the first expected failure as the missing storage function/behavior, not a broken test loader. Implement only the shared driver and rerun to green.
 - [ ] With `[1,0]`, `[0,1]`, `[-1,0]` and query `[1,0]`, assert cosine distances `[0,1,2]` within `1e-6`. Add closer out-of-scope vectors and assert a scoped top-1 still returns the scoped record.
-- [ ] Confirm scalar latency at the intended corpus size; if unknown, use 10k and 100k generated records. Record dimensions, hardware, cache state, run count, and p50/p95 including filtered queries. Existing local d384/top-10/half-scope measurements at 10k gave scalar/`vec0` medians 3.071/1.825 ms under Node and 3.081/1.793 ms under Bun, with identical order. They do not establish a universal winner. Keep scalar if it fits the caller's latency budget; compare insertion, updates, disk size, and `vec0` queries if it does not. Do not ship two selectable engines.
+- [ ] Validate storage against the user-selected 10,000 and 100,000 records using representative dimensions, filters, and a stated latency budget. [Local benchmark results](BENCHMARKS.md) cover warm in-memory vector queries, not the complete application. Record hardware, cache state, run count, and p50/p95; add file-backed insertion, updates, disk size, and hybrid-search measurements before freezing the schema. Keep scalar if it fits the expected workload; select `vec0` if its broad-scan advantage justifies separate vector-table maintenance. Do not ship two selectable engines.
 - [ ] Add cross-runtime reopen tests, failed insert/delete rollback, parameter binding, and row-key behavior. For `vec0` with `id INTEGER PRIMARY KEY`, use `id`; FTS5 still uses its `rowid`.
 - [ ] Add native CI for Windows x64, Linux glibc x64/arm64, and macOS arm64/x64, recording `process.arch`. Candidate runner labels are `windows-2025`, `ubuntu-24.04`, `ubuntu-24.04-arm`, `macos-15`, and `macos-15-intel`; verify current availability and actual architecture. Run both runtime suites in each available native lane; explicitly mark any unavailable architecture as unverified. Use pinned baseline versions and an additional current-supported-runtime check; never mark a skipped lane passed.
 

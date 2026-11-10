@@ -14,7 +14,8 @@ Use [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for task details, contracts
 - [x] Probe shared better-sqlite3/sqlite-vec on local macOS ARM64 in Node.js and Bun, including exchanged database files.
 - [ ] Pin driver and sqlite-vec versions after checking their compatibility.
 - [ ] Turn isolated probe cases into package tests: vector/FTS operations, rollback, deletion, and reopen.
-- [ ] Compare inline BLOB/scalar distance and vec0 on representative corpus sizes and query filters; record latency and storage costs.
+- [x] Compare warm in-memory vector queries at the user-selected 10,000 and 100,000 records, with no filter, 50%, and 1% selection; see [local results](BENCHMARKS.md).
+- [ ] Validate representative embedding dimensions, file-backed queries, hybrid retrieval, updates, and storage costs against the expected workload and latency budget.
 - [ ] Add Windows x64, Linux, and macOS CI lanes for both runtimes. Windows ARM64 is out of scope, not a deferred lane. Record runner architectures and unsupported combinations explicitly.
 
 **Done when:** the shared driver passes the same package fixtures on the documented runtime/platform matrix; failed extension loading gives actionable errors. Do not add a second driver without a demonstrated need.
