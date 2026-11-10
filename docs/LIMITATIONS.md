@@ -9,19 +9,19 @@
 
 ## Runtime and Platform Coverage
 
-The bootstrap was checked locally on macOS using Node.js 22.23.3 and Bun 1.4.4. Windows x64 and Linux remain unverified, as do native SQLite loading and other runtime versions on all systems. Windows ARM64 is out of scope, with no compatibility work planned.
+The bootstrap was checked locally on macOS using Node.js 22.23.3 and Bun 1.4.4. A separate, isolated macOS ARM64 probe also verified better-sqlite3 13.0.3 with sqlite-vec 0.1.9 (SQLite 3.53.4) in both runtimes: vector/FTS5 operations, rollback, deletion, and cross-runtime persistence passed without a custom dylib. These probes are not a shipped storage implementation. Windows x64, Linux, macOS x64, and other runtime versions remain unverified. Windows ARM64 is out of scope, with no compatibility work planned.
 
 | Target | Known constraint | Required evidence |
 | --- | --- | --- |
-| macOS with Bun | Apple's SQLite cannot load extensions | Use a custom SQLite library before any connection opens |
+| macOS with `bun:sqlite` (alternative) | Apple's SQLite cannot load extensions | Use a custom SQLite library before any connection opens; the recommended shared driver avoids this path |
 | Windows x64 | sqlite-vec publishes a binary | Verify installation, loading, paths, and persistence |
 | Windows ARM64 | Out of scope; sqlite-vec 0.1.9 has no packaged binary | Not applicable; support is not planned |
 | Linux x64/ARM64 | sqlite-vec publishes binaries | Verify the actual distribution and architecture; musl is unverified |
-| macOS x64/ARM64 | sqlite-vec publishes binaries | Test each architecture and driver independently |
+| macOS x64/ARM64 | Shared driver probe passed on ARM64 only | Test x64 and the eventual package integration separately |
 
-With Homebrew, a future Bun/macOS setup can install SQLite using `brew install sqlite` and discover its prefix with `brew --prefix sqlite`. Call `Database.setCustomSQLite()` with the resulting `lib/libsqlite3.dylib` path before opening a database. Do not hardcode `/opt/homebrew` or `/usr/local`. No one-mem configuration option implements this setup yet.
+If the alternative `bun:sqlite` driver is adopted, Homebrew can install SQLite using `brew install sqlite` and discover its prefix with `brew --prefix sqlite`. Call `Database.setCustomSQLite()` with the resulting `lib/libsqlite3.dylib` path before opening a database. Do not hardcode `/opt/homebrew` or `/usr/local`. The shared better-sqlite3 recommendation does not require this setup; no one-mem configuration option implements it.
 
-Do not omit optional dependencies when installing sqlite-vec: its platform binaries are optional packages. Package version, SQLite build, OS, architecture, and C library affect compatibility. As researched on 2026-11-10, better-sqlite3 13.0.3 bundles N-API binaries and has no install script; advice for older releases may differ. Its exact compatibility with Bun 1.4.4 remains untested.
+Do not omit optional dependencies when installing sqlite-vec: its platform binaries are optional packages. Package version, SQLite build, OS, architecture, and C library affect compatibility. As researched on 2026-11-10, better-sqlite3 13.0.3 bundles N-API binaries and has no install script; advice for older releases may differ. The local probe does not validate every Node.js/Bun version allowed by the package's engine ranges.
 
 ## Research and Data
 

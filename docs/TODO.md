@@ -1,6 +1,6 @@
 # TODO
 
-Implement in order. Mark a milestone complete only when its checks pass, and update the architecture, decisions, limitations, and changelog alongside behavior changes.
+Use [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for task details, contracts, and fixtures, and [REFERENCE_ANALYSIS.md](REFERENCE_ANALYSIS.md) for the rationale. This checklist reflects the revised hybrid-first recommendation, not a requirement to reproduce the Python implementation. Mark milestones complete only when their checks pass.
 
 ## 0. Project Bootstrap
 
@@ -11,41 +11,46 @@ Implement in order. Mark a milestone complete only when its checks pass, and upd
 
 ## 1. SQLite Compatibility
 
+- [x] Probe shared better-sqlite3/sqlite-vec on local macOS ARM64 in Node.js and Bun, including exchanged database files.
 - [ ] Pin driver and sqlite-vec versions after checking their compatibility.
-- [ ] Load the extension under Node.js and Bun and query its version.
-- [ ] Insert known vectors, verify nearest-neighbor ordering, test rollback, and close/reopen the database.
-- [ ] Verify macOS custom SQLite loading before any connection opens.
+- [ ] Turn isolated probe cases into package tests: vector/FTS operations, rollback, deletion, and reopen.
+- [ ] Compare inline BLOB/scalar distance and vec0 on representative corpus sizes and query filters; record latency and storage costs.
 - [ ] Add Windows x64, Linux, and macOS CI lanes for both runtimes. Windows ARM64 is out of scope, not a deferred lane. Record runner architectures and unsupported combinations explicitly.
 
-**Done when:** both drivers pass the same storage fixtures on the documented runtime/platform matrix; failed extension loading gives actionable errors.
+**Done when:** the shared driver passes the same package fixtures on the documented runtime/platform matrix; failed extension loading gives actionable errors. Do not add a second driver without a demonstrated need.
 
 ## 2. Durable Ingestion
 
-- [ ] Define records with source, session, speaker, ordering, and namespace metadata.
+- [ ] Implement explicit source/session/order metadata and database namespace ownership using the plan's contracts.
 - [ ] Implement migrations and atomic, idempotent writes with update/delete semantics.
-- [ ] Persist embedding model, dimension, and metric; reject incompatible input.
-- [ ] Select the first embedding integration without coupling storage to a provider.
+- [ ] Persist embedding-space identity, dimension, and metric; reject incompatible, nonfinite, and zero-norm vectors.
+- [ ] Accept caller-supplied embeddings through a narrow provider contract, with inference outside SQL transactions.
 
 **Done when:** restart, duplicate text from distinct sources, rollback, namespace isolation, and incompatible-vector fixtures pass.
 
-## 3. Dense Retrieval
+## 3. Hybrid Retrieval
 
-- [ ] Add query embeddings, scoped vector search, and results with source references.
-- [ ] Test known neighbors using deterministic vectors and persisted data.
+- [ ] Add query embeddings and exact vector search with filters applied before top-k.
+- [ ] Add FTS5 lexical retrieval with safely compiled literal terms and matching filters.
+- [ ] Fuse candidate ranks with deterministic reciprocal rank fusion and stable ties.
+- [ ] Enforce the evidence-text byte budget as soon as the search API is introduced.
+- [ ] Test known neighbors, rare exact terms, identifiers, empty branches, filtered results, and persisted updates.
 
 **Done when:** identical fixtures return equivalent evidence under Node.js and Bun without generative LLM calls.
 
-## 4. Graph and Temporal Context
+## 4. Context and Evidence
 
-- [ ] Evaluate entity extraction choices, then add entity relations and graph retrieval.
-- [ ] Add temporal units that preserve session boundaries and source references.
-- [ ] Test relation traversal, missing-entity fallback, temporal ordering, and bounded expansion independently.
+- [ ] Fetch bounded neighbors from the same source/session using explicit ordinal metadata.
+- [ ] Deduplicate record identity without merging distinct-source provenance.
+- [ ] Enforce the plan's explicit evidence-text byte budget and test Unicode boundaries.
+- [ ] Preserve record revisions and distinguish recording time from event-time claims.
 
-## 5. Fusion and Evidence
+## 5. Evaluation and Optional Experiments
 
-- [ ] Add deterministic ranking, deduplication, and bounded evidence assembly.
-- [ ] Define the budget unit explicitly and test its actual enforcement.
-- [ ] Verify that every evidence item remains traceable to original text.
+- [ ] Compare dense, lexical, hybrid, and hybrid-with-neighbors at equal evidence budgets.
+- [ ] Report retrieval quality separately from final-answer quality, plus latency, storage, and model calls.
+- [ ] Evaluate NER/graph/PPR, stored windows/episodes, or reranking only against diagnosed baseline failures; use the plan's promotion criteria.
+- [ ] Keep gold answers, evidence labels, and dataset categories out of runtime retrieval inputs.
 
 ## 6. Optional Reader and Evaluation
 

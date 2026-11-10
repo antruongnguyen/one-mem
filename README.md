@@ -6,7 +6,7 @@ An independent TypeScript implementation inspired by [Zero-Mem: Zero-Token Memor
 
 ## Direction
 
-Build a local, persistent memory system whose indexing and retrieval do not call a generative LLM. Preserve original passages and their provenance, then add dense retrieval, entity relationships, temporal context, and evidence selection incrementally. An optional final reader may call an LLM using retrieved evidence.
+Build a local, persistent memory system whose indexing and retrieval do not call a generative LLM. Preserve original passages and their provenance, combine vector and lexical retrieval, and expand context using explicit session metadata. Entity graphs and richer temporal structures are optional experiments that must outperform this baseline before adoption. An optional final reader may call an LLM using retrieved evidence.
 
 “Zero-token” does not mean zero embedding cost, computation, storage, or final-reader cost. This project does not claim to reproduce the paper's benchmark results.
 
@@ -26,18 +26,20 @@ The last two commands check that the currently empty entry point loads; they pro
 
 ## Runtime and Storage Targets
 
-| Runtime | Proposed driver | Extension |
+| Runtime | Recommended initial driver | Extension |
 | --- | --- | --- |
 | Node.js | `better-sqlite3` | `sqlite-vec` |
-| Bun | `bun:sqlite` | `sqlite-vec` |
+| Bun | `better-sqlite3` | `sqlite-vec` |
 
-These drivers are not installed yet. Confirm extension loading and persistence before accepting the storage design. On macOS, Bun requires a custom SQLite library for extension loading. one-mem targets Node.js and Bun on Windows x64, Linux, and macOS. Windows ARM64 is outside project scope. The bootstrap checks do not establish native SQLite compatibility. See [limitations](docs/LIMITATIONS.md).
+These dependencies are not installed in the package yet. An isolated macOS ARM64 probe verified the shared driver in both runtimes, including extension loading and cross-runtime persistence. Windows x64 and Linux still require native tests; Windows ARM64 is outside project scope. Keep `bun:sqlite` as an alternative if compatibility or measurements justify a second driver. See [limitations](docs/LIMITATIONS.md).
 
 ## Repository Map
 
 - `src/` — TypeScript source; currently an empty package entry point.
 - `dist/` — generated JavaScript and declarations, ignored by Git.
 - [Architecture](docs/ARCHITECTURE.md) — proposed components, data flow, and invariants.
+- [Reference analysis](docs/REFERENCE_ANALYSIS.md) — lessons from Zero-Mem and alternatives.
+- [Implementation plan](docs/IMPLEMENTATION_PLAN.md) — recommended design, tasks, and acceptance checks.
 - [Decisions](docs/DECISIONS.md) — accepted constraints and provisional choices.
 - [TODO](docs/TODO.md) — ordered milestones with completion checks.
 - [Limitations](docs/LIMITATIONS.md) — current gaps and compatibility caveats.

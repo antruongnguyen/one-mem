@@ -14,19 +14,23 @@ Prefer standard JavaScript and Node-compatible APIs in shared code. Keep depende
 
 ## D003 — SQLite and sqlite-vec
 
-**Status: Accepted direction; driver selection provisional.** Use SQLite for durable source records and derived metadata, with sqlite-vec for vector search. This replaces the reference's file formats and requires a new storage design.
+**Status: Accepted storage direction; revised driver recommendation.** Use SQLite for durable source records and derived metadata, with sqlite-vec for vector search. Learn from the reference's ideas rather than reproducing its file formats or internal algorithms.
 
 | Approach | Benefit | Tradeoff |
 | --- | --- | --- |
-| `better-sqlite3` on Node; `bun:sqlite` on Bun | Uses each runtime's documented integration | Two thin adapters; custom SQLite required on macOS Bun |
-| `better-sqlite3` on both | Potentially one adapter | Exact package/Bun version compatibility must be verified |
+| `better-sqlite3` on both (recommended) | One integration; verified locally without a custom dylib | Windows/Linux and other versions still need native tests |
+| `better-sqlite3` on Node; `bun:sqlite` on Bun | Uses each runtime's native SQLite interface | Two adapters; custom SQLite required on macOS Bun |
 | `node:sqlite` on Node | Removes a Node driver dependency | Changes the integration baseline and requires separate validation |
 
-Start by testing the dual-driver approach. Accept it only after loading the extension, querying known vectors, transaction rollback, and close/reopen persistence succeed in both runtimes. Measure before claiming performance superiority. Do not add SQLite dependencies during documentation-only bootstrap.
+An isolated probe on macOS ARM64 passed with Node.js 22.23.3, Bun 1.4.4, better-sqlite3 13.0.3, sqlite-vec 0.1.9, and SQLite 3.53.4. It covered vector queries, FTS5, rollback, deletion, and databases exchanged between runtimes. This supports starting with one driver; it does not establish cross-platform support or superior performance. No SQLite dependency has been added to the root package. See the [implementation plan](IMPLEMENTATION_PLAN.md) for the storage gate and reproducible production test requirements.
 
 ## D004 — Incremental Memory Pipeline
 
-**Status: Accepted direction.** Implement durable ingestion and dense retrieval first. Add graph and temporal context independently, then fusion and bounded evidence. Keep generative LLM calls outside ingestion and retrieval. Defer model/provider selection and final QA integration until their milestones.
+**Status: Revised recommendation.** Implement durable ingestion, exact vector retrieval, FTS5 lexical retrieval, reciprocal rank fusion, and bounded context from explicit source/session metadata. Keep generative LLM calls outside ingestion and retrieval. Use a caller-supplied embedding provider initially; do not bundle a model runtime by default.
+
+Graph/PPR, NER, precomputed windows/episodes, cross-encoders, and a final reader are optional follow-up experiments. Promote them only after held-out evaluation shows gains against the hybrid baseline at comparable evidence budgets. Do not port dataset-specific query or answer-rewriting heuristics as defaults.
+
+The recommended first scope and database layout are design proposals, not existing functionality or user-imposed scale requirements. The [reference analysis](REFERENCE_ANALYSIS.md) explains alternatives; the [implementation plan](IMPLEMENTATION_PLAN.md) defines contracts and acceptance gates.
 
 ## D005 — Documentation and Collaboration
 
