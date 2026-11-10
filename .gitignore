@@ -4,7 +4,8 @@ coverage/
 *.tsbuildinfo
 
 # Local agent plans and research scratch files.
-/docs/superpowers/
+docs/superpowers/
+docs/llms/
 .codegraph/
 
 # Local credentials and memory databases.
