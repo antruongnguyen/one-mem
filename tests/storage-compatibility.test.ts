@@ -217,8 +217,10 @@ for (const unavailable of ["missing native", "invalid native", "missing extensio
     const directory = mkdtempSync(join(tmpdir(), "one mem incomplete install "));
     try {
       writeFileSync(join(directory, "package.json"), '{"type":"module"}');
-      cpSync(fileURLToPath(new URL("../dist/storage.js", import.meta.url)),
-        join(directory, "storage.js"));
+      for (const module of ["storage.js", "errors.js"]) {
+        cpSync(fileURLToPath(new URL(`../dist/${module}`, import.meta.url)),
+          join(directory, module));
+      }
       const modules = join(directory, "node_modules");
       mkdirSync(modules);
       const root = fileURLToPath(new URL("../node_modules/", import.meta.url));

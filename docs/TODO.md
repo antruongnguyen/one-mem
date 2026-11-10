@@ -26,13 +26,14 @@ Use [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for task details, contracts
 
 ## 2. Durable Ingestion
 
-- [ ] Implement explicit source/session/order metadata and database namespace ownership using the plan's contracts.
-- [ ] Treat new observations as distinct trace IDs; test preservation of contradictory historical statements and reserve upsert for explicit source-record replacement.
-- [ ] Implement migrations and atomic, idempotent writes with update/delete semantics.
-- [ ] Persist embedding-space identity, dimension, and metric; reject incompatible, nonfinite, and zero-norm vectors.
-- [ ] Accept caller-supplied embeddings through a narrow provider contract, with inference outside SQL transactions.
+- [x] Implement explicit source/session/order metadata and database namespace ownership using the plan's contracts.
+- [x] Treat new observations as distinct trace IDs; test preservation of contradictory historical statements and reserve upsert for explicit source-record replacement.
+- [x] Implement schema-v1 initialization and atomic, idempotent writes with update/delete semantics, ordinal swaps, UUID revisions, and rollback on conflicts.
+- [x] Persist embedding-space identity, dimension, and metric; reject incompatible, nonfinite, zero-norm, and malformed provider outputs.
+- [x] Accept caller-supplied embeddings through a narrow provider contract, with inference outside SQL transactions.
+- [x] Serialize accepted operations, propagate cancellation before commit, drain work on close, and verify cross-runtime reopen through the public API.
 
-**Done when:** restart, duplicate text from distinct sources, rollback, namespace isolation, and incompatible-vector fixtures pass.
+**Phase 1 evidence:** restart, distinct-source provenance, rollback, namespace/model isolation, incompatible vectors, and lifecycle fixtures pass locally in Node.js and Bun. Schema version 1 provides persistence in the private package; the Phase 0 performance gate and production compatibility freeze remain open.
 
 ## 3. Hybrid Retrieval
 

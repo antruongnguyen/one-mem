@@ -10,7 +10,7 @@ Recorded on 2026-11-10. Accepted decisions govern this repository; provisional c
 
 **Status: Accepted.** Use strict TypeScript, standard ES modules, and `tsc` to generate JavaScript and declarations. Bun manages development dependencies and the lockfile. Baselines are Node.js 22+ and Bun 1.4+; Windows x64, Linux, and macOS are verification targets, not compatibility claims based on compilation. Windows ARM64 is out of scope.
 
-Prefer standard JavaScript and Node-compatible APIs in shared code. Keep dependencies minimal. The bootstrap has no public API, server, CLI, or monorepo. Package publishing is disabled with `private: true` until the API and release process exist.
+Prefer standard JavaScript and Node-compatible APIs in shared code. Keep dependencies minimal. Phase 1 exposes the ingestion/lifecycle API; there is no server, CLI, or monorepo. Package publishing remains disabled with `private: true` until the API and release process are ready.
 
 ## D003 — SQLite and sqlite-vec
 
@@ -24,7 +24,7 @@ Prefer standard JavaScript and Node-compatible APIs in shared code. Keep depende
 
 The root package pins better-sqlite3 13.0.3 and sqlite-vec 0.1.9. Reproducible compiled fixtures promote the earlier isolated macOS ARM64 probe into project tests for both runtimes. Keep optional dependencies installed. This driver release bundles N-API binaries with no install script or TypeScript declarations; pinned driver typings are required, and no additional lifecycle-script trust is needed.
 
-Internal `openStorage(path)` returns the concrete driver connection, with bigint results, foreign keys, a 5,000 ms busy timeout, and WAL for local file databases. It loads the extension before returning; native availability failures preserve their cause and do not trigger a second driver or lexical-only fallback. There is no public memory API or durable schema in Phase 0.
+Internal `openStorage(path)` returns the concrete driver connection, with bigint results, foreign keys, a 5,000 ms busy timeout, and WAL for local file databases. It loads the extension before returning; native availability failures preserve their cause and do not trigger a second driver or lexical-only fallback. Phase 1 defers WAL configuration until database ownership/version checks complete, so rejecting an incompatible database does not change its journal mode.
 
 ## D004 — Incremental Memory Pipeline
 
@@ -34,7 +34,7 @@ Graph/PPR, NER, precomputed windows/episodes, cross-encoders, and a final reader
 
 Reading [paper v1](https://arxiv.org/pdf/2607.29377v1) strengthens the priority of a scoped graph/relational-support experiment for distributed-evidence failures. Its ablation compares graph and hierarchy variants of its full model, not one-mem's hybrid baseline. RRF plus neighbors remains a deliberate simplification whose quality must be measured independently. Evaluation will distinguish primary candidates from expanded/final evidence, and isolate encoder, storage, retrieval, final-reader, and end-to-end costs. See [PAPER_ANALYSIS.md](PAPER_ANALYSIS.md).
 
-The recommended first scope and database layout are design proposals, not existing functionality or user-imposed scale requirements. The [reference analysis](REFERENCE_ANALYSIS.md) explains alternatives; the [implementation plan](IMPLEMENTATION_PLAN.md) defines contracts and acceptance gates.
+Phase 1 implements namespace-owned records, embeddings, and transactional FTS maintenance. Retrieval and context components remain planned; the 10k/100k measurements are evaluation sizes rather than supported-capacity requirements. The [reference analysis](REFERENCE_ANALYSIS.md) explains alternatives; the [implementation plan](IMPLEMENTATION_PLAN.md) defines contracts and acceptance gates.
 
 ## D005 — Documentation and Collaboration
 
@@ -57,6 +57,18 @@ The Phase 0 file-backed benchmark adds the previously missing insertion, text/ve
 **Status: Accepted.** CI configures five native baseline targets at Node.js 22.23.3 and Bun 1.4.4, plus Linux x64 using current Node LTS and latest Bun. Each lane installs both runtimes, asserts the actual architecture, and runs both compiled suites including database exchange. Linux lanes assert glibc. Missing runtimes or mismatched architectures fail instead of becoming skipped passes.
 
 Local macOS ARM64 execution is the available package evidence. Windows x64, Linux glibc x64/ARM64, macOS x64, and the current-runtime lane are configured but have not run in this local task. Native CI results must precede expanded support claims; Windows ARM64 remains excluded and Linux musl remains unverified.
+
+## D008 — Phase 1 Persistence Without a Production Schema Freeze
+
+**Status: Accepted on continuation.** After the Phase 0 report explicitly identified the open performance gate, the user requested the next phase. Implement Phase 1 on the same inline BLOB baseline: `openMemory`, `upsert`, `get`, `remove`, and `close`, with schema version 1 and persisted namespace/embedding-space identity. File persistence and reopen are supported by the implementation; the private package does not yet promise schema compatibility across releases or production suitability. The Phase 0 threshold is unchanged and no completed benchmark is repeated.
+
+Initialize version 1 only in an empty version-0 database, atomically creating settings, records, and external-content FTS5 with maintenance triggers. Reject unrelated or incompatible databases, and newer schema versions, before changing persistent pragmas. No automatic model migration or re-embedding occurs on open. A different model identity/dimension/metric requires a new database.
+
+Upsert snapshots and validates the whole batch, hashes canonical fields, and performs embedding outside SQL transactions. Reuse vectors for metadata-only corrections; unchanged canonical input retains its UUID revision. Recheck all affected revisions in one write transaction and replace changed rows atomically, including ordinal swaps. Later observations receive new caller IDs; correcting an existing ID changes its revision and does not retain the replaced content as history.
+
+Operations on one handle are serialized. Closing stops admission, drains accepted operations, and closes once; repeated close is allowed. Cancellation before commit propagates the signal reason and writes nothing; a completed commit remains successful. Providers that ignore cancellation can delay close. Provider failures retain their cause, with no retry or fallback. Freeze only the private embedding-space snapshot, never the caller's provider object, and reject descriptor changes before and after embedding.
+
+Timestamps require a valid Gregorian date, time with seconds, and explicit `Z` or `±HH:MM` offset. Canonical storage uses JavaScript UTC ISO strings at millisecond precision. Original record text and identifiers are preserved exactly. Reject unpaired UTF-16 surrogates in persisted strings before embedding or SQLite binding: SQLite's UTF-8 conversion would otherwise replace them and could alias distinct IDs. Valid astral Unicode remains supported. Search, ranking, evidence budgets, and neighbor APIs remain later-phase work.
 
 ## Evidence
 
