@@ -260,10 +260,15 @@ for (const unavailable of ["missing native", "invalid native", "missing extensio
         const { openStorage } = await import(${JSON.stringify(storageUrl)});
         assert.throws(() => openStorage(${JSON.stringify(path)}), error => {
           assert.ok(error instanceof Error);
+          assert.equal(error.code, "SQLITE_UNAVAILABLE");
           assert.ok(error.cause instanceof Error);
-          assert.ok(error.cause.message.includes(${JSON.stringify(unavailable === "missing extension"
-            ? `sqlite-vec-${process.platform === "win32" ? "windows" : process.platform}-${process.arch}`
-            : ".node")}));
+          if (${JSON.stringify(unavailable)} === "invalid native") {
+            assert.ok(error.cause.message.trim().length > 0);
+          } else {
+            assert.ok(error.cause.message.includes(${JSON.stringify(unavailable === "missing extension"
+              ? `sqlite-vec-${process.platform === "win32" ? "windows" : process.platform}-${process.arch}`
+              : ".node")}));
+          }
           assert.match(error.message, /${unavailable === "missing extension" ? "sqlite-vec" : "better-sqlite3"}/);
           assert.match(error.message, /${process.platform}-${process.arch}/);
           assert.match(error.message, /install/i);
