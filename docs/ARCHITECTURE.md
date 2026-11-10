@@ -100,7 +100,7 @@ The [implementation plan](IMPLEMENTATION_PLAN.md) defines lifecycle and retrieva
 
 The internal connection enables safe bigint integers, foreign keys, and a 5,000 ms busy timeout. Phase 1 validates schema ownership/version before enabling persistent WAL, so a rejected database is not changed by the open path. It loads sqlite-vec before returning and closes on initialization failure. `src/storage.ts` now owns the durable tables and lifecycle SQL; Phase 0 compatibility fixtures remain for native driver checks. Native availability errors retain their cause; ordinary filesystem and SQLite operational errors remain actionable.
 
-Package fixtures verify the shared driver locally on macOS ARM64 with Node.js 22.23.3 and Bun 1.4.4, including file exchange in both directions. Configured Windows/Linux/macOS x64 lanes have not been executed by this local task. See [limitations](LIMITATIONS.md).
+Package fixtures verify the shared driver locally on macOS ARM64 with Node.js 22.23.3 and Bun 1.4.4, including file exchange in both directions. Configured CI lanes have not been executed by this local task. See [limitations](LIMITATIONS.md).
 
 If `bun:sqlite` is later adopted, its macOS extension loading needs a custom SQLite library selected before any connection opens; shared code must not eagerly import Bun-only modules in Node.js. See [limitations](LIMITATIONS.md) for platform constraints and [decisions](DECISIONS.md) for alternatives.
 

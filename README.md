@@ -102,7 +102,7 @@ The suites use the same compiled `node:test` fixtures with Node's test runner an
 
 Internal storage uses this single driver, loads sqlite-vec, preserves bigint row keys, enables foreign keys and a 5,000 ms busy timeout, and uses WAL for local file databases. Native loading failures preserve their cause. Phase 1 stores records, normalized vector BLOBs, and FTS5 entries in one private versioned schema; namespace and embedding-space settings are checked when opening it. Phase 0 compatibility fixtures remain for native driver checks, while durable schema ownership now belongs to storage. The schema is experimental and does not promise compatibility across releases.
 
-CI is configured for Windows x64, Linux glibc x64/ARM64, and macOS x64/ARM64. It retains Node and Bun synthetic evaluation reports per matrix lane. Configuration alone is not verified support; only local macOS ARM64 native execution has been verified. See [limitations](docs/LIMITATIONS.md) for actual evidence. Windows ARM64 is excluded. See [benchmarks](docs/BENCHMARKS.md) for existing layout comparisons and the reproducible file-backed Phase 0 measurement.
+CI is configured for Windows x64, Linux glibc x64/ARM64, and macOS ARM64. It retains Node and Bun synthetic evaluation reports per matrix lane. Configuration alone is not verified support; only local macOS ARM64 native execution has been verified. See [limitations](docs/LIMITATIONS.md) for actual evidence. Windows ARM64 is excluded. See [benchmarks](docs/BENCHMARKS.md) for existing layout comparisons and the reproducible file-backed Phase 0 measurement.
 
 ## Repository Map
 

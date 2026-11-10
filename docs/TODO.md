@@ -19,7 +19,7 @@ Use [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for task details, contracts
 - [x] Compare warm in-memory vector queries at the user-selected 10,000 and 100,000 records, with no filter, 50%, and 1% selection; see [local results](BENCHMARKS.md).
 - [x] Add a reproducible file-backed 384-dimensional fixture for insertion, updates, checkpointed disk size, and benchmark-only hybrid queries at 10k/100k, with a declared provisional local budget; see [results and limits](BENCHMARKS.md).
 - [ ] Validate representative production embeddings, text, filters, query/update mix, and storage costs against an agreed workload and latency budget before freezing the durable schema. Synthetic Phase 0 evidence does not close this gate.
-- [x] Configure Windows x64, Linux glibc x64/ARM64, and macOS ARM64/x64 CI lanes for both pinned runtimes, plus a current-runtime Linux lane. Assert actual architecture and document unexecuted coverage. Windows ARM64 remains out of scope.
+- [x] Configure Windows x64, Linux glibc x64/ARM64, and macOS ARM64 CI lanes for both pinned runtimes, plus a current-runtime Linux lane. Assert actual architecture and document unexecuted coverage. Windows ARM64 remains out of scope.
 - [ ] Obtain passing native CI results before advertising support beyond locally verified macOS ARM64. No remote CI run was performed in Phase 0.
 
 **Phase 0 evidence:** the shared driver passes package fixtures locally in Node.js and Bun; native/extension failures are actionable. Configured lanes still require execution before expanding support claims. Keep the scalar inline baseline and one driver; production suitability remains open as recorded in [D006](DECISIONS.md#d006--phase-0-layout-and-evidence-boundary).

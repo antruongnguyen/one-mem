@@ -54,9 +54,9 @@ The Phase 0 file-backed benchmark adds the previously missing insertion, text/ve
 
 ## D007 — Configured Coverage and Executed Evidence
 
-**Status: Accepted.** CI configures five native baseline targets at Node.js 22.23.3 and Bun 1.4.4, plus Linux x64 using current Node LTS and latest Bun. Each lane installs both runtimes, asserts the actual architecture, and runs both compiled suites including database exchange. Linux lanes assert glibc. Missing runtimes or mismatched architectures fail instead of becoming skipped passes.
+**Status: Accepted.** CI runs for pull requests targeting `main` and pushes to `main` only when library source, tests, scripts, build/dependency configuration, or the CI workflow changes. Documentation-only and unrelated application changes are excluded. CI configures four native baseline targets at Node.js 22.23.3 and Bun 1.4.4, plus Linux x64 using current Node LTS and latest Bun. Each lane installs both runtimes, asserts the actual architecture, and runs both compiled suites including database exchange. Linux lanes assert glibc. Missing runtimes or mismatched architectures fail instead of becoming skipped passes.
 
-Local macOS ARM64 execution is the available package evidence. Windows x64, Linux glibc x64/ARM64, macOS x64, and the current-runtime lane are configured but have not run in this local task. Native CI results must precede expanded support claims; Windows ARM64 remains excluded and Linux musl remains unverified.
+Local macOS ARM64 execution is the available package evidence. The configured hosted lanes have not run in this local task. macOS x64 is not included in the CI matrix and remains unverified. Native CI results must precede expanded support claims; Windows ARM64 remains excluded and Linux musl remains unverified.
 
 ## D008 — Phase 1 Persistence Without a Production Schema Freeze
 

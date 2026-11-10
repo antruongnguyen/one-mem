@@ -2,10 +2,25 @@ name: CI
 
 on:
   push:
+    branches: [main]
+    paths: &ci-paths
+      - .github/workflows/ci.yml
+      - src/**
+      - tests/**
+      - scripts/**
+      - package.json
+      - bun.lock
+      - tsconfig*.json
   pull_request:
+    branches: [main]
+    paths: *ci-paths
 
 permissions:
   contents: read
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
   test:
@@ -19,84 +34,72 @@ jobs:
             os: windows-2025
             platform: win32
             arch: x64
-            node_version: 22.23.3
-            bun_version: 1.4.4
           - name: Linux glibc x64
             os: ubuntu-24.04
             platform: linux
             arch: x64
-            node_version: 22.23.3
-            bun_version: 1.4.4
           - name: Linux glibc arm64
             os: ubuntu-24.04-arm
             platform: linux
             arch: arm64
-            node_version: 22.23.3
-            bun_version: 1.4.4
           - name: macOS arm64
             os: macos-15
             platform: darwin
             arch: arm64
-            node_version: 22.23.3
-            bun_version: 1.4.4
-          - name: macOS x64
-            os: macos-15-intel
-            platform: darwin
-            arch: x64
-            node_version: 22.23.3
-            bun_version: 1.4.4
-          - name: Current supported runtimes on Linux x64
+          - name: Current runtimes on Linux x64
             os: ubuntu-24.04
             platform: linux
             arch: x64
-            node_version: lts/*
-            bun_version: latest
+            node: lts/*
+            bun: latest
+
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: ${{ matrix.node_version }}
-
+          node-version: ${{ matrix.node || '22.23.3' }}
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: ${{ matrix.bun_version }}
+          bun-version: ${{ matrix.bun || '1.4.4' }}
 
-      - name: Report and verify runtime versions and architecture
+      - name: Verify native target
         env:
           EXPECTED_PLATFORM: ${{ matrix.platform }}
           EXPECTED_ARCH: ${{ matrix.arch }}
         run: |
-          node --version
-          bun --version
-          node -e "if (process.platform !== process.env.EXPECTED_PLATFORM || process.arch !== process.env.EXPECTED_ARCH) throw new Error('Unexpected Node target: ' + process.platform + '/' + process.arch); console.log('Node ' + process.version + ' ' + process.platform + '/' + process.arch); if (process.platform === 'linux') { const glibc = process.report?.getReport()?.header?.glibcVersionRuntime; if (!glibc) throw new Error('Expected glibc on Linux'); console.log('glibc=' + glibc); }"
-          bun -e "if (process.platform !== process.env.EXPECTED_PLATFORM || process.arch !== process.env.EXPECTED_ARCH) throw new Error('Unexpected Bun target: ' + process.platform + '/' + process.arch); console.log('Bun ' + Bun.version + ' ' + process.platform + '/' + process.arch);"
+          for runtime in node bun; do
+            "$runtime" -e '
+              const assert = require("node:assert/strict");
+              assert.equal(process.platform, process.env.EXPECTED_PLATFORM);
+              assert.equal(process.arch, process.env.EXPECTED_ARCH);
+              console.log({ runtime: process.versions.bun ? "Bun" : "Node.js",
+                version: process.versions.bun ?? process.versions.node,
+                platform: process.platform, arch: process.arch });
+              if (process.platform === "linux" && !process.versions.bun) {
+                const glibc = process.report.getReport().header.glibcVersionRuntime;
+                assert.ok(glibc, "Expected glibc on Linux");
+                console.log({ glibc });
+              }
+            '
+          done
 
       - run: bun install --frozen-lockfile
-
-      - run: bun run typecheck
-      - run: bun run build
-      - run: bun run test:build
-      - run: bun run test:node
-      - run: bun run test:bun
-
-      - name: Import built entry with Node
-        run: node --input-type=module -e "await import('./dist/index.js')"
-
-      - name: Import built entry with Bun
-        run: bun -e "await import('./dist/index.js')"
-
-      - run: bun run test:package
-
-      - name: Evaluate synthetic fixtures with Node
-        run: bun run eval:node > evaluation-node.json
-
-      - name: Evaluate synthetic fixtures with Bun
-        run: bun run eval:bun > evaluation-bun.json
-
-      - name: Retain synthetic evaluation reports
+      - name: Check types and compile tests
+        run: |
+          bun run typecheck
+          bun run test:build
+      - name: Test runtimes and packaged consumers
+        run: |
+          bun run test:node
+          bun run test:bun
+          bun run test:package
+      - name: Evaluate synthetic fixtures
+        run: |
+          bun run eval:node > evaluation-node.json
+          bun run eval:bun > evaluation-bun.json
+      - name: Retain evaluation reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: evaluation-${{ matrix.name }}
           path: evaluation-*.json

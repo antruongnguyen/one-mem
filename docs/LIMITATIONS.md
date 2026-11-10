@@ -19,10 +19,9 @@ The following lanes are **configured, not executed by this local task**. Runner 
 | `ubuntu-24.04` | Linux glibc x64 | Node 22.23.3 / Bun 1.4.4 | Unverified |
 | `ubuntu-24.04-arm` | Linux glibc ARM64 | Node 22.23.3 / Bun 1.4.4 | Unverified |
 | `macos-15` | macOS ARM64 | Node 22.23.3 / Bun 1.4.4 | Hosted image unverified; local macOS ARM64 passed |
-| `macos-15-intel` | macOS x64 | Node 22.23.3 / Bun 1.4.4 | Unverified |
 | `ubuntu-24.04` | Linux glibc x64 | Current Node LTS / latest Bun | Unverified; selected versions reported at execution |
 
-Both executables must be on PATH for the compatibility suites. Cross-runtime tests fail rather than skip when either is missing. Windows ARM64 is out of scope, with no compatibility work planned; Linux musl has no configured lane and remains unverified.
+macOS x64 is not part of the CI matrix and remains unverified. Both executables must be on PATH for the compatibility suites. Cross-runtime tests fail rather than skip when either is missing. Windows ARM64 is out of scope, with no compatibility work planned; Linux musl has no configured lane and remains unverified.
 
 ### Phase 4 local verification record — 2026-11-10
 
@@ -118,7 +117,7 @@ An independent Phase 0 review found no actionable issues and confirmed error-cau
 | Windows x64 | sqlite-vec publishes a binary | Verify installation, loading, paths, and persistence |
 | Windows ARM64 | Out of scope; sqlite-vec 0.1.9 has no packaged binary | Not applicable; support is not planned |
 | Linux x64/ARM64 | sqlite-vec publishes binaries | Verify the actual distribution and architecture; musl is unverified |
-| macOS x64/ARM64 | Shared package fixtures passed locally on ARM64 only | Test x64 and hosted ARM64 images separately |
+| macOS x64/ARM64 | Shared package fixtures passed locally on ARM64 only | Hosted ARM64 CI remains unverified; x64 has no configured lane |
 
 If the alternative `bun:sqlite` driver is adopted, Homebrew can install SQLite using `brew install sqlite` and discover its prefix with `brew --prefix sqlite`. Call `Database.setCustomSQLite()` with the resulting `lib/libsqlite3.dylib` path before opening a database. Do not hardcode `/opt/homebrew` or `/usr/local`. The shared better-sqlite3 recommendation does not require this setup; no one-mem configuration option implements it.
 
