@@ -41,6 +41,7 @@ These drivers are not installed yet. Confirm extension loading and persistence b
 - [Decisions](docs/DECISIONS.md) — accepted constraints and provisional choices.
 - [TODO](docs/TODO.md) — ordered milestones with completion checks.
 - [Limitations](docs/LIMITATIONS.md) — current gaps and compatibility caveats.
+- `docs/llms/` — local Markdown copies of `llms.txt` and `llms-full.txt` references, including the [Bun index](docs/llms/bun.md) and [full Bun guide](docs/llms/bun-full.md). Prefer these for Bun guidance.
 - [Repository guidelines](AGENTS.md) — contributor and agent instructions.
 - [Changelog](CHANGELOG.md) — project changes.
 

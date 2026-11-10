@@ -6,6 +6,8 @@ one-mem is an independent strict TypeScript package using ES modules. The siblin
 
 Keep TypeScript source in `src/`, build output in `dist/`, and future tests in `tests/*.test.ts`. The overview is in root `README.md`; project notes belong in `docs/TODO.md`, `docs/DECISIONS.md`, `docs/LIMITATIONS.md`, and `docs/ARCHITECTURE.md`. Git ignores `docs/superpowers/`; do not force-add its contents.
 
+`docs/llms/` contains Markdown copies of `llms.txt` and `llms-full.txt` references. For Bun guidance, start with [bun.md](docs/llms/bun.md), then search [bun-full.md](docs/llms/bun-full.md) for details. Consult [official docs](https://bun.com/docs) when local references are missing or outdated.
+
 ## Setup and Commands
 
 Use Bun for reproducible installs and package scripts:
