@@ -15,7 +15,7 @@ Implement in order. Mark a milestone complete only when its checks pass, and upd
 - [ ] Load the extension under Node.js and Bun and query its version.
 - [ ] Insert known vectors, verify nearest-neighbor ordering, test rollback, and close/reopen the database.
 - [ ] Verify macOS custom SQLite loading before any connection opens.
-- [ ] Add Windows, Linux, and macOS CI lanes for both runtimes. Record runner architectures and unsupported combinations explicitly.
+- [ ] Add Windows x64, Linux, and macOS CI lanes for both runtimes. Windows ARM64 is out of scope, not a deferred lane. Record runner architectures and unsupported combinations explicitly.
 
 **Done when:** both drivers pass the same storage fixtures on the documented runtime/platform matrix; failed extension loading gives actionable errors.
 

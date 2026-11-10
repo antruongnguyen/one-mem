@@ -31,7 +31,7 @@ The last two commands check that the currently empty entry point loads; they pro
 | Node.js | `better-sqlite3` | `sqlite-vec` |
 | Bun | `bun:sqlite` | `sqlite-vec` |
 
-These drivers are not installed yet. Confirm extension loading and persistence before accepting the storage design. On macOS, Bun requires a custom SQLite library for extension loading. Windows, Linux, and macOS are targets; the bootstrap checks do not establish native SQLite compatibility. See [limitations](docs/LIMITATIONS.md).
+These drivers are not installed yet. Confirm extension loading and persistence before accepting the storage design. On macOS, Bun requires a custom SQLite library for extension loading. one-mem targets Node.js and Bun on Windows x64, Linux, and macOS. Windows ARM64 is outside project scope. The bootstrap checks do not establish native SQLite compatibility. See [limitations](docs/LIMITATIONS.md).
 
 ## Repository Map
 

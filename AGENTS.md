@@ -2,7 +2,7 @@
 
 ## Project Scope and Structure
 
-one-mem is an independent strict TypeScript package using ES modules. The sibling `../zero-mem` is a read-only reference for high-level ideas, not a dependency or a source for copied code or prompts. User-facing conversation must be Vietnamese; documentation, code prompts, and subagent prompts must be English. macOS, Windows, and Linux are targets, but only the local macOS bootstrap has been verified. No memory engine, SQLite adapter, test framework, or formatter is configured yet.
+one-mem is an independent strict TypeScript package using ES modules. The sibling `../zero-mem` is a read-only reference for high-level ideas, not a dependency or a source for copied code or prompts. User-facing conversation must be Vietnamese; documentation, code prompts, and subagent prompts must be English. Windows x64, Linux, and macOS are targets; Windows ARM64 is out of scope. Only the local macOS bootstrap has been verified. No memory engine, SQLite adapter, test framework, or formatter is configured yet.
 
 Keep TypeScript source in `src/`, build output in `dist/`, and future tests in `tests/*.test.ts`. The overview is in root `README.md`; project notes belong in `docs/TODO.md`, `docs/DECISIONS.md`, `docs/LIMITATIONS.md`, and `docs/ARCHITECTURE.md`. Git ignores `docs/superpowers/`; do not force-add its contents.
 

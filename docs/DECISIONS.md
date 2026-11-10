@@ -8,7 +8,7 @@ Recorded on 2026-11-10. Accepted decisions govern this repository; provisional c
 
 ## D002 — One TypeScript ESM Package
 
-**Status: Accepted.** Use strict TypeScript, standard ES modules, and `tsc` to generate JavaScript and declarations. Bun manages development dependencies and the lockfile. Baselines are Node.js 22+ and Bun 1.4+; supported operating systems are a verification target, not a claim based on compilation.
+**Status: Accepted.** Use strict TypeScript, standard ES modules, and `tsc` to generate JavaScript and declarations. Bun manages development dependencies and the lockfile. Baselines are Node.js 22+ and Bun 1.4+; Windows x64, Linux, and macOS are verification targets, not compatibility claims based on compilation. Windows ARM64 is out of scope.
 
 Prefer standard JavaScript and Node-compatible APIs in shared code. Keep dependencies minimal. The bootstrap has no public API, server, CLI, or monorepo. Package publishing is disabled with `private: true` until the API and release process exist.
 
