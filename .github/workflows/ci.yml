@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths: &ci-paths
+      - .gitattributes
       - .github/workflows/ci.yml
       - src/**
       - tests/**

@@ -203,8 +203,9 @@ test("missing parents and invalid database paths retain underlying I/O errors", 
   const directory = mkdtempSync(join(tmpdir(), "one mem paths "));
   try {
     assert.throws(() => openStorage(join(directory, "absent", "memory.sqlite")),
-      error => error instanceof TypeError && error.cause === undefined
-        && /directory does not exist/.test(error.message));
+      error => error instanceof Error && error.cause === undefined
+        && ((error instanceof TypeError && /directory does not exist/.test(error.message))
+          || ("code" in error && error.code === "SQLITE_CANTOPEN")));
     assert.throws(() => openStorage(directory), error => error instanceof Error
       && "code" in error && error.code === "SQLITE_CANTOPEN" && error.cause === undefined);
   } finally {

@@ -1,0 +1,2 @@
+# Keep fixture literals and source checksums stable across native checkouts.
+* text=auto eol=lf
