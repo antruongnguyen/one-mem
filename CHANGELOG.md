@@ -6,11 +6,13 @@
 
 - Revised the proposed implementation toward shared SQLite integration, hybrid retrieval, and evaluation-gated graph features.
 - Documented Windows x64 as the Windows target and Windows ARM64 as outside project scope.
-- Kept search, scope, evidence, neighbors, and reader APIs for later phases; Phase 1 makes no retrieval or production-capacity claim.
+- Added Phase 2 scoped dense and lexical search with rank-fused, whole-record evidence. Neighbor expansion remains Phase 3; graph retrieval and readers remain evaluation-gated follow-ups.
+- Kept the private API and version-1 schema experimental without a stable cross-release compatibility promise; Phase 2 does not change the schema. The Phase 0 performance gate remains open, and Phase 2 adds no performance experiment or performance/retrieval-quality claim.
 
 ### Added
 
 - Added the private Phase 1 `openMemory` lifecycle API for durable `upsert`, `get`, `remove`, and `close`, with an injected cosine embedding provider and schema version 1.
+- Added Phase 2 `search(query, options)` with source/session filters applied before dense-cosine and literal-token FTS5 candidate limits, reciprocal rank fusion with constant 60, and whole-record UTF-8 text-byte-bounded evidence. Query embeddings use provider purpose `query`; results retain record revisions, match roles, available branch ranks, RRF scores, and retrieval diagnostics.
 - Added namespace and embedding-space validation, provenance revisions, serialized operations with close/drain behavior, and atomic record, vector-BLOB, and FTS5 writes. The schema and API remain experimental with no stable cross-release compatibility promise.
 - Added deferred persistent WAL setup to memory open so unsupported or foreign schemas can be rejected without changing the database; retained Phase 0 native compatibility fixtures.
 - Added the Phase 0 internal shared better-sqlite3/sqlite-vec connection, compiled native compatibility tests, and a native CI matrix with explicit architecture checks.

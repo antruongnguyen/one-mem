@@ -112,7 +112,7 @@ test("optional metadata stays absent and the largest safe sequence round trips",
     assert.equal(plain?.eventAt, undefined);
     assert.equal(plain?.sessionId, undefined);
     assert.equal((await memory.get("b"))?.sequence, Number.MAX_SAFE_INTEGER);
-    assert.equal("search" in memory, false);
+    assert.equal("search" in memory, true);
   } finally {
     await memory.close();
   }

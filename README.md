@@ -2,17 +2,17 @@
 
 An independent TypeScript implementation inspired by [Zero-Mem: Zero-Token Memory Operations for LLM Agents](https://arxiv.org/pdf/2607.29377), targeting Node.js and Bun with SQLite and [sqlite-vec](https://alexgarcia.xyz/sqlite-vec/js.html).
 
-**Status: Phase 1 — durable record lifecycle.** The private package now provides `openMemory`, `upsert`, `get`, `remove`, and `close`, backed by an experimental version-1 schema. The API requires an injected cosine embedding provider. Durable writes work, but the API and schema do not have a stable cross-release compatibility promise. Search, scope filters, evidence, neighbors, and reader APIs are planned later phases.
+**Status: Phase 2 — scoped hybrid search and bounded evidence.** The private package provides `openMemory`, `upsert`, `get`, `remove`, `search`, and `close`, backed by an experimental version-1 schema. The API requires an injected cosine embedding provider. The API and schema do not have a stable cross-release compatibility promise; Phase 2 does not change schema version 1. Neighbor expansion belongs to Phase 3. Graph retrieval, a reader, and retrieval-quality claims remain evaluation-gated.
 
 ## Direction
 
-The longer-term direction is a local, persistent memory system whose indexing and retrieval do not call a generative LLM. The current Phase 1 API stores records with provenance; later phases may add vector and lexical retrieval, explicit session context, and an optional final reader. Entity graphs and richer temporal structures are experiments that require evaluation before adoption.
+The longer-term direction is a local, persistent memory system whose indexing and retrieval do not call a generative LLM. Phase 2 combines scoped scalar cosine ranking with FTS5 lexical ranking, then returns source-bearing evidence within a text-byte budget. Session-neighbor expansion and an optional final reader are later phases. Entity graphs and richer temporal structures are experiments that require evaluation before adoption.
 
 “Zero-token” does not mean zero embedding cost, computation, storage, or final-reader cost. This project does not claim to reproduce the paper's benchmark results.
 
 ## Record Lifecycle
 
-After `bun run build`, this example can run from a TypeScript file in the repository root. It demonstrates deterministic injected embeddings; it does not query or generate answers.
+After `bun run build`, this example can run from a TypeScript file in the repository root. It demonstrates deterministic injected document and query embeddings, and returns evidence without a network call or generative model.
 
 ```ts
 import { openMemory } from "./dist/index.js";
@@ -23,7 +23,9 @@ const vectors = new Map<string, Float32Array>([
 ]);
 const embeddings = {
   space: { id: "demo-v1", dimensions: 2, metric: "cosine" as const },
-  async embed(texts: readonly string[]) {
+  async embed(texts: readonly string[], options: { purpose: "document" | "query"; signal?: AbortSignal }) {
+    options.signal?.throwIfAborted();
+    if (options.purpose === "query") return texts.map(() => new Float32Array([1, 0]));
     return texts.map(text => {
       const vector = vectors.get(text);
       if (!vector) throw new Error(`No demo vector for ${text}`);
@@ -38,12 +40,28 @@ const memory = await openMemory({
   embeddings,
 });
 try {
-  await memory.upsert([{ id: "apple-1", sourceId: "notes", text: "red apple" }]);
-  console.log(await memory.get("apple-1"));
+  await memory.upsert([
+    { id: "apple-1", sourceId: "notes", text: "red apple" },
+    { id: "ocean-1", sourceId: "notes", text: "blue ocean" },
+  ]);
+  const evidence = await memory.search("apple", { sourceId: "notes", limit: 5 });
+  console.log(evidence.items.map(({ record, role, ranks }) => ({
+    id: record.id,
+    revision: record.revision,
+    role,
+    text: record.text,
+    ranks,
+  })));
 } finally {
   await memory.close();
 }
 ```
+
+`search(query, { sourceId?, sessionId?, limit?, maxEvidenceBytes?, signal? })` embeds the query with `purpose: "query"`. A session filter requires a source filter. The default limit is 10 matched records, and the accepted range is 1–100. `maxEvidenceBytes` defaults to 16,384 and counts only the UTF-8 bytes of complete returned record texts; it does not count metadata, prompts, or model tokens. Oversized records are skipped whole, and later smaller matches may still fit.
+
+Each match retains its source-bearing record, revision, dense and lexical ranks when present, and RRF score. Evidence diagnostics report branch candidate counts, lexical terms used and whether token extraction was truncated, bytes used, and records omitted by the evidence budget. Search filters are applied before each ranking branch's candidate cap. Dense candidates use scalar cosine distance; lexical input is compiled into up to 32 distinct Unicode letter/number/underscore tokens as literal FTS5 phrases. Punctuation-only queries can still use dense retrieval. Reciprocal rank fusion uses constant 60. An empty eligible corpus returns empty evidence without calling the query provider. Cancellation, embedding-space validation, and per-handle operation queuing follow the same lifecycle rules as writes.
+
+Phase 2 does not expose a neighbor option or add conversational context. It makes no graph, reader, multilingual retrieval-quality, or production-capacity claim. The Phase 0 performance gate remains open; this phase adds no new performance experiment.
 
 Use a new record ID for each observation so conflicting statements remain separately attributable. Reuse an ID only to explicitly correct that same source record; its replacement gets a new revision, and the old content is not retained.
 
@@ -79,9 +97,9 @@ CI is configured for Windows x64, Linux glibc x64/ARM64, and macOS x64/ARM64. Co
 
 - `src/` — TypeScript source; private record lifecycle and internal SQLite storage.
 - `dist/` — generated JavaScript and declarations, ignored by Git.
-- `tests/` — native compatibility, ingestion, input, and lifecycle fixtures; compiled into ignored `.test-dist/`.
+- `tests/` — native compatibility, ingestion, input, lifecycle, retrieval, and evidence fixtures; compiled into ignored `.test-dist/`.
 - `scripts/` — shared test launcher and file-backed storage benchmark.
-- [Architecture](docs/ARCHITECTURE.md) — current record lifecycle, storage invariants, and later retrieval direction.
+- [Architecture](docs/ARCHITECTURE.md) — record lifecycle, hybrid retrieval, evidence bounds, and storage invariants.
 - [Reference analysis](docs/REFERENCE_ANALYSIS.md) — lessons from Zero-Mem and alternatives.
 - [Paper analysis](docs/PAPER_ANALYSIS.md) — paper findings, experimental limits, and implications for one-mem.
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md) — recommended design, tasks, and acceptance checks.

@@ -217,7 +217,7 @@ for (const unavailable of ["missing native", "invalid native", "missing extensio
     const directory = mkdtempSync(join(tmpdir(), "one mem incomplete install "));
     try {
       writeFileSync(join(directory, "package.json"), '{"type":"module"}');
-      for (const module of ["storage.js", "errors.js"]) {
+      for (const module of ["storage.js", "errors.js", "retrieval.js", "evidence.js"]) {
         cpSync(fileURLToPath(new URL(`../dist/${module}`, import.meta.url)),
           join(directory, module));
       }

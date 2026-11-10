@@ -2,9 +2,9 @@
 
 ## Current Implementation
 
-- Phase 1 implements `openMemory`, atomic `upsert`, `get`, `remove`, and serialized `close`, using the shared better-sqlite3/sqlite-vec connection. It persists exact source records, UUID revisions, normalized vector BLOBs, namespace/space settings, and external-content FTS5 in schema version 1.
-- The package and schema remain private and provisional. Reopen/persistence are tested, but no compatibility guarantee across releases or production capacity claim exists. Retrieval, entity extraction, context/evidence assembly, and final QA are not implemented; there is no `search` method yet.
-- Native compatibility fixtures remain separate from the schema-v1 ingestion/lifecycle tests. The old storage benchmark still measures its smaller fixture schema, not Phase 1 metadata/validation or a public retrieval API. Unexecuted CI configuration does not establish platform support.
+- Phase 2 adds `search` to the Phase 1 record lifecycle: scoped exact scalar cosine + FTS5 candidates, RRF, and matched evidence under a UTF-8 text-byte budget. Schema version 1 and the shared better-sqlite3/sqlite-vec connection are unchanged.
+- The package and schema remain private and provisional. Reopen/persistence and deterministic retrieval fixtures are tested, but no compatibility guarantee across releases, retrieval-quality claim, or production capacity claim exists. Neighbor/context expansion, entity extraction, graph retrieval, reranking, and final QA are not implemented.
+- Native compatibility fixtures remain separate from schema-v1 ingestion/lifecycle/retrieval tests. The old storage benchmark measures its smaller fixture schema, not the current public search API. Unexecuted CI configuration does not establish platform support.
 - No production performance, accuracy, concurrency, or paper-parity claims have been established.
 
 ## Runtime and Platform Coverage
@@ -23,6 +23,23 @@ The following lanes are **configured, not executed by this local task**. Runner 
 | `ubuntu-24.04` | Linux glibc x64 | Current Node LTS / latest Bun | Unverified; selected versions reported at execution |
 
 Both executables must be on PATH for the compatibility suites. Cross-runtime tests fail rather than skip when either is missing. Windows ARM64 is out of scope, with no compatibility work planned; Linux musl has no configured lane and remains unverified.
+
+### Phase 2 local verification record — 2026-11-10
+
+Verified locally on macOS ARM64 with Node.js 22.23.3 and Bun 1.4.4. A fresh export of staged files, with a fresh frozen install and no ignored probes/references or prebuilt output, passed:
+
+| Check | Result |
+| --- | --- |
+| `bun install --frozen-lockfile` | Passed; dependencies unchanged |
+| `bun run typecheck`, `bun run build`, `bun run test:build` | Passed |
+| `bun run test:node` | 98 passed, 0 failed, 0 skipped |
+| `bun run test:bun` | 98 passed, 0 failed across 8 files; no skipped cases |
+| Built public entry imports | Passed in Node and Bun |
+| README TypeScript example | Ran under Bun and Node with `--experimental-strip-types`; matching IDs, revisions, roles, and branch ranks |
+
+The suite retains 69 previous cases and adds 29 Phase 2 cases. The new tests first compiled and failed against missing search/compiler/fusion stubs in both runtimes. They cover 51 out-of-scope distractors before a scoped target, literal lexical input, RRF scores, UTF-8 ID ties, whole-text byte limits, token diagnostics, empty scopes, query-purpose validation/cancellation, stored-vector corruption, post-inference snapshots, update/delete/reopen, and cross-runtime retrieval equivalence.
+
+Independent review found no remaining actionable issues after correcting an overstatement in architecture documentation. Additional Node/Bun probes verified the candidate caps at limits 1/10/11/99/100 using 501 records, exact ranks/diagnostics, maximum safe byte budgets, and Unicode/literal queries. SQLite error/cause checks also passed. No benchmarks or remote CI lanes were run, and schema version 1 remains unchanged.
 
 ### Phase 1 local verification record — 2026-11-10
 
@@ -79,6 +96,8 @@ The original Phase 0 representative-workload gate remains unresolved: no product
 
 The user's subsequent continuation authorizes Phase 1 functionality on this baseline, with an explicit distinction between versioned file persistence and a production schema-compatibility freeze. That continuation does not turn the failed threshold into a passed gate. No performance experiment was repeated for Phase 1, and Phase 0 timings must not be relabeled as measurements of the new ingestion API.
 
+Phase 2 likewise adds functionality without repeating the benchmark or changing its threshold. Its behavioral tests do not measure public-API latency, real-model retrieval quality, or production-scale suitability. The original 100k p95 misses remain open evidence, not measurements of this new search implementation.
+
 The reference uses English-oriented NER and query heuristics. Multilingual support, including Vietnamese input, requires its own validation. Embedding models, entity extraction, vector dimensions, and reader budgets remain open choices.
 
 Reference benchmark figures are reported by the paper, not measurements of one-mem. A future comparison must record dataset versions, models, settings, and evaluation scripts. “Zero-token” refers to avoiding generative LLM calls in memory operations, not free embeddings or final QA.
@@ -96,6 +115,15 @@ Database encryption, access control, retention, and production deployment are no
 - Close waits for accepted operations; a provider ignoring its abort signal can delay completion. Cancellation before commit writes nothing and preserves the signal reason. Once committed, a write is not undone by subsequent cancellation.
 - Remove is logical deletion from records/vector BLOBs/FTS, not physical erasure from WAL, free pages, backups, or storage media. Power-loss/crash recovery, network filesystems, encryption, and production backup procedures remain unverified.
 - Version 1 initializes only empty version-0 databases. Foreign/fixture databases, incompatible namespaces/spaces, and newer schema versions are rejected. There are no prior released one-mem schemas to upgrade; upgrade/backup fixtures are required before the first future schema change. The Phase 0 performance gate still precedes production schema freeze.
+
+## Phase 2 Behavioral Boundaries
+
+- Dense ranking is an exact O(eligible records × dimensions) scalar scan, not approximate/sublinear search. FTS5 corpus statistics belong to the database; source/session filters constrain eligible candidates before ranking limits but do not create independent per-source FTS statistics.
+- Up to 50–500 candidates per branch enter fixed equal-weight RRF. Relevant evidence outside those candidates cannot be recovered by fusion or the final byte selector. Numeric RRF scores are not calibrated confidence, and nonempty dense retrieval does not promise abstention on unrelated queries.
+- The lexical compiler caps 32 distinct lowercase letter/number/underscore tokens and safely quotes them. `unicode61 remove_diacritics 0` retains accents, but Unicode normalization/case folding, Vietnamese segmentation, and code-symbol behavior are not a full linguistic or identifier analysis. Synthetic language cases establish behavior only.
+- The default 16,384-byte cap counts returned original text in UTF-8, including repeated text under different IDs. It excludes metadata, the query, prompt syntax, and tokenizer overhead. Whole oversized records are omitted, not compressed or truncated; this can exclude relevant evidence. Zero bytes returns no items while still reporting candidate/budget diagnostics for a nonempty scope.
+- Evidence is a detached snapshot after query inference. It carries namespace, caller IDs, revisions, ranks, and scores; later updates do not rewrite prior results. Citation identity validates provenance, not factual truth or completeness. Query embeddings still incur any provider-defined cost and privacy exposure.
+- Only matched items exist in Phase 2. `neighbors`, `anchorIds`, context roles, graph traversal, reader calls, and learned reranking are absent. Search rejects unsupported options rather than silently ignoring them. No schema, native dependency, or platform-support expansion is implied by this phase.
 
 ## Sources
 

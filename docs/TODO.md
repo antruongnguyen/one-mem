@@ -37,20 +37,21 @@ Use [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for task details, contracts
 
 ## 3. Hybrid Retrieval
 
-- [ ] Add query embeddings and exact vector search with filters applied before top-k.
-- [ ] Add FTS5 lexical retrieval with safely compiled literal terms and matching filters.
-- [ ] Fuse candidate ranks with deterministic reciprocal rank fusion and stable ties.
-- [ ] Enforce the evidence-text byte budget as soon as the search API is introduced.
-- [ ] Test known neighbors, rare exact terms, identifiers, empty branches, filtered results, and persisted updates.
+- [x] Add query embeddings and exact vector search with filters applied before top-k.
+- [x] Add FTS5 lexical retrieval with safely compiled literal terms and matching filters.
+- [x] Fuse candidate ranks with deterministic reciprocal rank fusion and UTF-8 binary ID ties.
+- [x] Enforce the evidence-text byte budget with whole records, forward filling, and omission diagnostics.
+- [x] Test known vector neighbors, rare exact terms, identifiers, empty branches, filtered results beyond the candidate cutoff, and persisted updates.
+- [x] Verify query-purpose provider validation, cancellation, detached snapshots after inference, and cross-runtime rank/score equivalence.
 
-**Done when:** identical fixtures return equivalent evidence under Node.js and Bun without generative LLM calls.
+**Phase 2 evidence:** identical fixtures return equivalent evidence under Node.js and Bun without generative LLM calls. Schema version 1 and native dependencies remain unchanged. Real-model quality, public-API performance, and the earlier 100k performance gate remain unverified/open.
 
 ## 4. Context and Evidence
 
 - [ ] Fetch bounded neighbors from the same source/session using explicit ordinal metadata.
 - [ ] Deduplicate record identity without merging distinct-source provenance.
-- [ ] Enforce the plan's explicit evidence-text byte budget and test Unicode boundaries.
-- [ ] Preserve record revisions and distinguish recording time from event-time claims.
+- [x] Enforce the plan's explicit evidence-text byte budget and test Unicode boundaries for matched evidence; retain these checks when adding context.
+- [x] Preserve record revisions and distinguish recording time from event-time claims in matched evidence; extend the same provenance contract to Phase 3 context.
 
 ## 5. Evaluation and Optional Experiments
 

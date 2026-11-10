@@ -39,6 +39,39 @@ export interface UpsertOptions {
   signal?: AbortSignal;
 }
 
+export interface Scope {
+  sourceId?: string;
+  sessionId?: string;
+}
+
+export interface SearchOptions extends Scope {
+  limit?: number;
+  maxEvidenceBytes?: number;
+  signal?: AbortSignal;
+}
+
+export interface EvidenceItem {
+  record: MemoryRecord;
+  role: "match";
+  score: number;
+  ranks: { dense?: number; lexical?: number };
+}
+
+export interface Evidence {
+  namespace: string;
+  query: string;
+  embeddingSpace: EmbeddingSpace;
+  items: readonly EvidenceItem[];
+  diagnostics: {
+    denseCandidates: number;
+    lexicalCandidates: number;
+    lexicalTermsUsed: number;
+    lexicalTermsTruncated: boolean;
+    usedBytes: number;
+    budgetOmitted: number;
+  };
+}
+
 export interface OpenMemoryOptions {
   path: string;
   namespace: string;
@@ -49,5 +82,6 @@ export interface Memory {
   upsert(records: readonly MemoryInput[], options?: UpsertOptions): Promise<UpsertResult>;
   get(id: string): Promise<MemoryRecord | undefined>;
   remove(ids: readonly string[]): Promise<number>;
+  search(query: string, options?: SearchOptions): Promise<Evidence>;
   close(): Promise<void>;
 }

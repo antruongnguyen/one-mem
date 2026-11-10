@@ -2,7 +2,7 @@
 
 ## Scope and Status
 
-one-mem is an independent TypeScript implementation informed by Zero-Mem. Phase 0 established internal `openStorage(path)` and native compatibility fixtures. Phase 1 adds a private, experimental version-1 schema and the `openMemory`, `upsert`, `get`, `remove`, and `close` lifecycle. Durable record writes are functional, but neither the API nor the schema has a stable cross-release compatibility promise. Search, scope filters, evidence, neighbors, and readers are not part of this phase.
+one-mem is an independent TypeScript implementation informed by Zero-Mem. Phase 0 established internal `openStorage(path)` and native compatibility fixtures. Phase 1 adds a private, experimental version-1 schema and the `openMemory`, `upsert`, `get`, `remove`, and `close` lifecycle. Phase 2 adds scoped dense and lexical retrieval through `search`, with rank-fused whole-record evidence under a UTF-8 text-byte budget. Neither the API nor schema has a stable cross-release compatibility promise, and Phase 2 leaves schema version 1 unchanged. Neighbor expansion belongs to Phase 3. Readers and graph retrieval remain separate, evaluation-gated follow-ups.
 
 Use one package and a shared TypeScript core for Node.js and Bun. Both runtimes use pinned better-sqlite3 13.0.3 with sqlite-vec 0.1.9. The [reference analysis](REFERENCE_ANALYSIS.md) records what to retain and change; the [implementation plan](IMPLEMENTATION_PLAN.md) defines the recommended contracts, tasks, and verification gates.
 
@@ -39,20 +39,32 @@ The caller assigns a new ID to each observed statement or event. `upsert` with a
 
 `close()` stops accepting operations, drains those already accepted, and closes the connection once. Repeated close calls are allowed; later lifecycle calls fail with `CLOSED`. `MemoryError` exposes stable error codes for input, embedding, database, conflict, availability, busy, and closed conditions while retaining causes. SQLite I/O/corruption errors remain actionable rather than becoming empty results.
 
-Retrieval remains a later phase. The planned dense + FTS5 rank fusion, explicit scope, byte-bounded evidence, session neighbors, and optional reader do not describe current product behavior. The Phase 0 100,000-record unfiltered and 50%-selected synthetic warm-hybrid cases missed the provisional p95 threshold; representative workload and budget validation remain open. Continuing to this schema phase does not freeze a production format or establish capacity claims. Inline normalized vector BLOBs with filtered scalar cosine remain the baseline.
+## Phase 2 Hybrid Search and Evidence
+
+The public search call is `search(query, { sourceId?, sessionId?, limit?, maxEvidenceBytes?, signal? })`. `sessionId` requires `sourceId`. `limit` defaults to 10 and accepts safe integers from 1 through 100. `maxEvidenceBytes` defaults to 16,384 and accepts a nonnegative safe integer for the UTF-8 record-text byte budget only. There is no `neighbors` option in Phase 2; an unsupported runtime option is rejected. Search does not expand conversational context.
+
+Search validates the query and options, checks cancellation and provider embedding-space compatibility, then checks for eligible rows. If no records qualify under the scope filters, it returns empty evidence without embedding the query. Otherwise the existing injected provider receives the query with `purpose: "query"` and the optional abort signal. The provider descriptor is checked against the frozen embedding-space snapshot before and after provider work, and validated vectors use the same normalization contract as document embeddings. Embedding work stays outside synchronous SQLite transactions. Search participates in the per-handle operation queue, so accepted calls drain before `close()` completes.
+
+Both ranking branches apply source/session filters before candidate limits. Each branch returns up to `min(500, max(50, 5 * limit))` candidates. Dense retrieval orders by filtered scalar cosine distance ascending. FTS5 uses `bm25` ascending over input compiled into at most 32 distinct Unicode letter/number/underscore tokens; each token is quoted as a literal phrase, and terms are joined with `OR`. Raw query syntax never reaches `MATCH`. Punctuation-only queries have no lexical candidates but may still return dense matches. This tokenizer preserves accents but is not a Vietnamese word segmenter or a complete code-symbol analyzer.
+
+Each branch assigns one-based ranks, with caller ID breaking ties. Reciprocal rank fusion sorts by score descending, then caller ID ascending, using `RRF(id) = Σ 1 / (60 + branchRank(id))`. Missing branch hits contribute no rank. Match evidence exposes the original record and its source/revision provenance, role, RRF score, and available dense/lexical ranks. Diagnostics report dense and lexical candidate counts, lexical term count and truncation, returned text bytes, and budget omissions.
+
+Evidence selection keeps records whole and follows fused match order. If a record does not fit, it is skipped and selection continues; text is never silently truncated. Deduplication is by record ID so identical text from independent sources retains provenance. `usedBytes` is the sum of `TextEncoder().encode(record.text).byteLength` for returned records. Record metadata, the query, prompt syntax, and model-token counts are outside this budget. Phase 2 returns matches only; it does not add context records or use an LLM.
+
+The Phase 0 100,000-record unfiltered and 50%-selected synthetic warm-hybrid cases missed the provisional p95 threshold; representative workload and budget validation remain open. Phase 2 adds no performance experiment or capacity claim. Continuing to retrieval does not freeze a production format. Inline normalized vector BLOBs with filtered scalar cosine remain the baseline.
 
 ## Component Boundaries
 
 | Area | Responsibility | Initial location when implemented |
 | --- | --- | --- |
-| Public entry | Expose the private Phase 1 lifecycle and types | `src/index.ts`, `src/types.ts` |
+| Public entry | Expose the private lifecycle, search, and evidence types | `src/index.ts`, `src/types.ts` |
 | Storage | Initialize and validate version-1 settings; atomically maintain records, vector BLOBs, and FTS5 | `src/storage.ts` |
 | Ingestion | Validate provider and record data, preserve provenance revisions | `src/memory.ts`, `src/embeddings.ts` |
-| Retrieval | Planned dense/lexical ranking and rank fusion | Later phase |
-| Evidence | Planned bounded evidence and session neighbors | Later phase |
+| Retrieval | Scoped dense/lexical candidates, literal query compilation, branch ranks, and RRF | `src/retrieval.ts`, `src/memory.ts` |
+| Evidence | Whole-record text-byte selection and match provenance; session neighbors are Phase 3 | `src/evidence.ts` |
 | Reader | Optional final QA using selected evidence | Separate follow-up after retrieval evaluation |
 
-Keep concrete storage operations and one driver, without a general database plugin framework. The current provider contract is injected and uses document embeddings; it does not choose a model runtime. No NER package, query embedding path, retrieval API, or LLM provider is included in Phase 1. Follow the plan's file map as later components are implemented; the table above is a responsibility map, not a request to create empty directories.
+Keep concrete storage operations and one driver, without a general database plugin framework. The provider contract is injected and does not choose a model runtime; Phase 2 uses that provider for query embeddings as well as document embeddings. Phase 1 includes no retrieval API, and Phase 2 adds no NER package or LLM provider. Follow the plan's file map as components are implemented; the table above is a responsibility map, not a request to create empty directories.
 
 ## Storage Invariants
 
@@ -66,7 +78,7 @@ Keep concrete storage operations and one driver, without a general database plug
 - Initialize schema version 1 only for an empty database, validate namespace and embedding settings before persistent WAL setup, and reject unsupported or foreign schemas without modifying them.
 - Use parameterized SQL and configured extension paths. Never load arbitrary extensions supplied with ingested content.
 
-The [implementation plan](IMPLEMENTATION_PLAN.md) defines lifecycle semantics and later retrieval phases. Phase 1 owns a private version-1 schema and retains inline vector BLOBs. The 100,000-record broad / 50%-selective synthetic warm-hybrid performance gate remains open; Phase 1 does not freeze a production schema. Neither scalar cosine nor `vec0` should be described as approximate nearest-neighbor search.
+The [implementation plan](IMPLEMENTATION_PLAN.md) defines lifecycle and retrieval semantics. Phase 2 owns no schema migration: it uses the private version-1 schema and retains inline vector BLOBs. The 100,000-record broad / 50%-selective synthetic warm-hybrid performance gate remains open; retrieval does not freeze a production schema. Neither scalar cosine nor `vec0` should be described as approximate nearest-neighbor search.
 
 ## Runtime Boundary
 

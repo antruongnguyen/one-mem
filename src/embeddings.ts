@@ -23,14 +23,14 @@ export function checkSpace(provider: EmbeddingProvider, space: Readonly<Embeddin
   }
 }
 
-export async function embedDocuments(provider: EmbeddingProvider, space: Readonly<EmbeddingSpace>,
-  texts: readonly string[], signal?: AbortSignal,
+export async function embedTexts(provider: EmbeddingProvider, space: Readonly<EmbeddingSpace>,
+  texts: readonly string[], purpose: "document" | "query", signal?: AbortSignal,
 ): Promise<Buffer[]> {
   signal?.throwIfAborted();
   checkSpace(provider, space);
   let vectors: readonly Float32Array[];
   try {
-    vectors = await provider.embed(Object.freeze([...texts]), { purpose: "document", ...(signal ? { signal } : {}) });
+    vectors = await provider.embed(Object.freeze([...texts]), { purpose, ...(signal ? { signal } : {}) });
   } catch (cause) {
     signal?.throwIfAborted();
     throw new MemoryError("PROVIDER_FAILURE", "The embedding provider failed.", { cause });

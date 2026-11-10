@@ -1,13 +1,14 @@
 import { createHash, randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 import { MemoryError } from "./errors.js";
-import { checkSpace, embedDocuments, snapshotSpace } from "./embeddings.js";
+import { checkSpace, embedTexts, snapshotSpace } from "./embeddings.js";
+import { compileLexicalQuery } from "./retrieval.js";
 import {
   commitRecords, initializeMemory, openStorage, readSnapshot, readStoredRecord,
-  removeRecords, sqliteError,
+  hasScopedRecords, removeRecords, searchStoredRecords, sqliteError,
 } from "./storage.js";
 import type { Replacement } from "./storage.js";
-import type { Memory, MemoryInput, OpenMemoryOptions, UpsertOptions, UpsertResult } from "./types.js";
+import type { Evidence, Memory, MemoryInput, OpenMemoryOptions, SearchOptions, UpsertOptions, UpsertResult } from "./types.js";
 
 function object(value: unknown, keys: readonly string[], label: string): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)
@@ -84,6 +85,31 @@ function upsertSignal(options?: UpsertOptions): AbortSignal | undefined {
   return raw.signal as AbortSignal | undefined;
 }
 
+function searchOptions(options?: SearchOptions): SearchOptions & { limit: number; maxEvidenceBytes: number } {
+  const raw = options === undefined ? {} : object(options,
+    ["sourceId", "sessionId", "limit", "maxEvidenceBytes", "signal"], "Search options");
+  const validated: SearchOptions & { limit: number; maxEvidenceBytes: number } = {
+    limit: raw.limit === undefined ? 10 : raw.limit as number,
+    maxEvidenceBytes: raw.maxEvidenceBytes === undefined ? 16_384 : raw.maxEvidenceBytes as number,
+  };
+  if (!Number.isSafeInteger(validated.limit) || validated.limit < 1 || validated.limit > 100) {
+    throw new MemoryError("INVALID_INPUT", "limit must be an integer in 1..100.");
+  }
+  if (!Number.isSafeInteger(validated.maxEvidenceBytes) || validated.maxEvidenceBytes < 0) {
+    throw new MemoryError("INVALID_INPUT", "maxEvidenceBytes must be a nonnegative safe integer.");
+  }
+  if (raw.sourceId !== undefined) validated.sourceId = identifier(raw.sourceId, "sourceId");
+  if (raw.sessionId !== undefined) {
+    validated.sessionId = identifier(raw.sessionId, "sessionId");
+    if (validated.sourceId === undefined) throw new MemoryError("INVALID_INPUT", "A session filter requires sourceId.");
+  }
+  if (raw.signal !== undefined) {
+    if (!(raw.signal instanceof AbortSignal)) throw new MemoryError("INVALID_INPUT", "signal must be an AbortSignal.");
+    validated.signal = raw.signal;
+  }
+  return validated;
+}
+
 export async function openMemory(options: OpenMemoryOptions): Promise<Memory> {
   const raw = object(options, ["path", "namespace", "embeddings"], "Open options");
   const path = identifier(raw.path, "path");
@@ -126,8 +152,8 @@ export async function openMemory(options: OpenMemoryOptions): Promise<Memory> {
         ])).digest("hex"));
         const changed = canonical.map((_, index) => index).filter(index => snapshot[index]?.contentHash !== hashes[index]);
         const needsEmbedding = changed.filter(index => snapshot[index]?.record.text !== canonical[index].text);
-        const vectors = needsEmbedding.length === 0 ? [] : await embedDocuments(embeddings, space,
-          needsEmbedding.map(index => canonical[index].text), signal);
+        const vectors = needsEmbedding.length === 0 ? [] : await embedTexts(embeddings, space,
+          needsEmbedding.map(index => canonical[index].text), "document", signal);
         signal?.throwIfAborted();
         checkSpace(embeddings, space);
         const byIndex = new Map(needsEmbedding.map((index, vectorIndex) => [index, vectors[vectorIndex]]));
@@ -156,6 +182,27 @@ export async function openMemory(options: OpenMemoryOptions): Promise<Memory> {
         if (!Array.isArray(ids)) throw new MemoryError("INVALID_INPUT", "IDs must be an array.");
         const unique = [...new Set(Array.from(ids, id => identifier(id, "id")))];
         return removeRecords(connection, unique);
+      });
+    },
+    search(query, options) {
+      return enqueue(async () => {
+        const text = identifier(query, "query");
+        const validated = searchOptions(options);
+        validated.signal?.throwIfAborted();
+        checkSpace(embeddings, space);
+        const lexical = compileLexicalQuery(text);
+        const evidence: Evidence = { namespace, query: text, embeddingSpace: { ...space }, items: [],
+          diagnostics: { denseCandidates: 0, lexicalCandidates: 0, lexicalTermsUsed: lexical.termsUsed,
+            lexicalTermsTruncated: lexical.truncated, usedBytes: 0, budgetOmitted: 0 } };
+        if (!hasScopedRecords(connection, validated)) return evidence;
+        const [vector] = await embedTexts(embeddings, space, [text], "query", validated.signal);
+        const snapshot = searchStoredRecords(connection, vector, lexical.match, validated,
+          Math.min(500, Math.max(50, 5 * validated.limit)), validated.limit, validated.maxEvidenceBytes);
+        evidence.items = snapshot.items;
+        Object.assign(evidence.diagnostics, { denseCandidates: snapshot.denseCandidates,
+          lexicalCandidates: snapshot.lexicalCandidates, usedBytes: snapshot.usedBytes,
+          budgetOmitted: snapshot.budgetOmitted });
+        return evidence;
       });
     },
     close() {

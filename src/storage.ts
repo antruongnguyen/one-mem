@@ -1,7 +1,9 @@
 import type Database from "better-sqlite3";
 import { createRequire } from "node:module";
 import { MemoryError } from "./errors.js";
-import type { EmbeddingSpace, MemoryInput, MemoryRecord } from "./types.js";
+import { fuseRanks } from "./retrieval.js";
+import { selectEvidence } from "./evidence.js";
+import type { EmbeddingSpace, MemoryInput, MemoryRecord, Scope } from "./types.js";
 
 const require = createRequire(import.meta.url);
 
@@ -253,5 +255,53 @@ export function removeRecords(db: Database.Database, ids: readonly string[]): nu
       if (!Number.isSafeInteger(count)) throw new MemoryError("DATABASE_MISMATCH", "Deletion count exceeds the supported range.");
       return count;
     }).immediate();
+  } catch (cause) { throw sqliteError(cause); }
+}
+
+function scopeFilter(scope: Scope): { sql: string; parameters: string[] } {
+  const conditions: string[] = [];
+  const parameters: string[] = [];
+  if (scope.sourceId !== undefined) { conditions.push("r.source_id = ?"); parameters.push(scope.sourceId); }
+  if (scope.sessionId !== undefined) { conditions.push("r.session_id = ?"); parameters.push(scope.sessionId); }
+  return { sql: conditions.length === 0 ? "1" : conditions.join(" AND "), parameters };
+}
+
+export function hasScopedRecords(db: Database.Database, scope: Scope): boolean {
+  const filter = scopeFilter(scope);
+  try {
+    return db.prepare(`SELECT 1 FROM records r WHERE ${filter.sql} LIMIT 1`).get(...filter.parameters) !== undefined;
+  } catch (cause) { throw sqliteError(cause); }
+}
+
+export function searchStoredRecords(db: Database.Database, vector: Buffer, match: string | null,
+  scope: Scope, candidateLimit: number, limit: number, maxEvidenceBytes: number,
+) {
+  const filter = scopeFilter(scope);
+  try {
+    return db.transaction(() => {
+      if (db.prepare(`SELECT 1 FROM records r WHERE ${filter.sql} AND length(r.embedding) != ? LIMIT 1`)
+        .get(...filter.parameters, vector.length)) {
+        throw new MemoryError("EMBEDDING_MISMATCH", "A stored vector length does not match the embedding space.");
+      }
+      const dense = db.prepare<unknown[], { id: string; distance: number | null }>(`
+        SELECT r.id, vec_distance_cosine(r.embedding, ?) AS distance FROM records r
+        WHERE ${filter.sql} ORDER BY distance ASC, r.id COLLATE BINARY ASC LIMIT ?
+      `).all(vector, ...filter.parameters, candidateLimit);
+      if (dense.some(row => row.distance === null || !Number.isFinite(row.distance))) {
+        throw new MemoryError("DATABASE_MISMATCH", "A stored vector produced an invalid cosine distance.");
+      }
+      const lexical = match === null ? [] : db.prepare<unknown[], { id: string }>(`
+        SELECT r.id FROM records_fts JOIN records r ON r.row_id = records_fts.rowid
+        WHERE records_fts MATCH ? AND ${filter.sql}
+        ORDER BY bm25(records_fts) ASC, r.id COLLATE BINARY ASC LIMIT ?
+      `).all(match, ...filter.parameters, candidateLimit);
+      const candidates = fuseRanks(dense.map(row => row.id), lexical.map(row => row.id)).map(candidate => {
+        const stored = readStoredRecord(db, candidate.id);
+        if (!stored) throw new MemoryError("DATABASE_MISMATCH", "A candidate has no source record.");
+        return { ...candidate, record: stored.record };
+      });
+      return { ...selectEvidence(candidates, limit, maxEvidenceBytes),
+        denseCandidates: dense.length, lexicalCandidates: lexical.length };
+    })();
   } catch (cause) { throw sqliteError(cause); }
 }

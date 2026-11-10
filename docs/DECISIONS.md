@@ -34,7 +34,7 @@ Graph/PPR, NER, precomputed windows/episodes, cross-encoders, and a final reader
 
 Reading [paper v1](https://arxiv.org/pdf/2607.29377v1) strengthens the priority of a scoped graph/relational-support experiment for distributed-evidence failures. Its ablation compares graph and hierarchy variants of its full model, not one-mem's hybrid baseline. RRF plus neighbors remains a deliberate simplification whose quality must be measured independently. Evaluation will distinguish primary candidates from expanded/final evidence, and isolate encoder, storage, retrieval, final-reader, and end-to-end costs. See [PAPER_ANALYSIS.md](PAPER_ANALYSIS.md).
 
-Phase 1 implements namespace-owned records, embeddings, and transactional FTS maintenance. Retrieval and context components remain planned; the 10k/100k measurements are evaluation sizes rather than supported-capacity requirements. The [reference analysis](REFERENCE_ANALYSIS.md) explains alternatives; the [implementation plan](IMPLEMENTATION_PLAN.md) defines contracts and acceptance gates.
+Phase 1 implements namespace-owned records, embeddings, and transactional FTS maintenance. Phase 2 adds scoped hybrid retrieval and bounded matched evidence; context expansion remains planned. The 10k/100k measurements are evaluation sizes rather than supported-capacity requirements. The [reference analysis](REFERENCE_ANALYSIS.md) explains alternatives; the [implementation plan](IMPLEMENTATION_PLAN.md) defines contracts and acceptance gates.
 
 ## D005 — Documentation and Collaboration
 
@@ -68,7 +68,19 @@ Upsert snapshots and validates the whole batch, hashes canonical fields, and per
 
 Operations on one handle are serialized. Closing stops admission, drains accepted operations, and closes once; repeated close is allowed. Cancellation before commit propagates the signal reason and writes nothing; a completed commit remains successful. Providers that ignore cancellation can delay close. Provider failures retain their cause, with no retry or fallback. Freeze only the private embedding-space snapshot, never the caller's provider object, and reject descriptor changes before and after embedding.
 
-Timestamps require a valid Gregorian date, time with seconds, and explicit `Z` or `±HH:MM` offset. Canonical storage uses JavaScript UTC ISO strings at millisecond precision. Original record text and identifiers are preserved exactly. Reject unpaired UTF-16 surrogates in persisted strings before embedding or SQLite binding: SQLite's UTF-8 conversion would otherwise replace them and could alias distinct IDs. Valid astral Unicode remains supported. Search, ranking, evidence budgets, and neighbor APIs remain later-phase work.
+Timestamps require a valid Gregorian date, time with seconds, and explicit `Z` or `±HH:MM` offset. Canonical storage uses JavaScript UTC ISO strings at millisecond precision. Original record text and identifiers are preserved exactly. Reject unpaired UTF-16 surrogates in persisted strings before embedding or SQLite binding: SQLite's UTF-8 conversion would otherwise replace them and could alias distinct IDs. Valid astral Unicode remains supported. Search, ranking, and evidence budgets were deferred to Phase 2; neighbors remain Phase 3 work.
+
+## D009 — Phase 2 Scoped Hybrid Retrieval and Evidence
+
+**Status: Accepted.** `search` combines exact scalar cosine and FTS5 candidates from schema version 1. Both branches apply source/session predicates before their candidate limit, `min(500, max(50, 5 * limit))`. A session filter requires its source. Dense distances and BM25 both rank ascending, with binary caller-ID ties. Equal-weight reciprocal rank fusion sums `1 / (60 + rank)`; final ties compare UTF-8 bytes to match SQLite `COLLATE BINARY`, including astral Unicode IDs. RRF scores are rank contributions, not confidence probabilities or similarity thresholds.
+
+Lexical input is compiled into quoted literal phrases joined with `OR`, using at most 32 distinct lowercase Unicode letter/number/underscore tokens in first-occurrence order. Truncation means a 33rd distinct token exists. Original query and stored record text remain unchanged; punctuation-only queries can still retrieve dense candidates. This does not claim exact tokenizer parity, Vietnamese segmentation, or code-symbol understanding. No raw query syntax reaches FTS `MATCH`.
+
+Validate query/options, cancellation, and the provider space before any empty-scope return. Empty eligible scopes skip embedding; otherwise query inference uses `purpose: "query"` outside SQL transactions. Both ranked branches, current records, and detached evidence are materialized in one synchronous read transaction after inference. Writes during inference are visible in that later snapshot. Provider failures propagate with their cause and never become lexical-only success; detected NULL/nonfinite stored-vector distances fail instead of silently ranking first.
+
+Search defaults to 10 matches and 16,384 UTF-8 text bytes. `limit` is an integer from 1 through 100; `maxEvidenceBytes` is a nonnegative safe integer. Whole records are selected in fused order; oversized records are skipped so later smaller records can fit. `budgetOmitted` counts inspected byte-budget skips before the accepted-match limit is reached, not exclusions caused only by the limit. Repeated text under distinct IDs consumes bytes separately. Query, metadata, prompt framing, and model tokens are outside this text-byte cap.
+
+Phase 2 exposes matched records, numeric scores, one-based branch ranks, and diagnostics. Items have `role: "match"`; `anchorIds`, context roles, nullable context scores, and the `neighbors` option wait until Phase 3. Passing `neighbors` now is an input error. The private API/schema and the Phase 0 performance limitation remain unchanged; no benchmark or quality evaluation was rerun, and no reader, graph, reranker, or new dependency was added.
 
 ## Evidence
 

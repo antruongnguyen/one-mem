@@ -301,13 +301,13 @@ await assert.rejects(memory.get("a"), { code: "CLOSED" });
 
 ### Phase 2 — First useful retrieval: dense + FTS5 + RRF
 
-**Files:** `src/retrieval.ts`, `src/evidence.ts`, `src/memory.ts`, `src/storage.ts`, `src/types.ts`, `tests/retrieval.test.ts`, `tests/fusion.test.ts`, `tests/evidence.test.ts`.
-**Consumes:** persisted records and embedding-space contract. **Produces:** `search`, stable branch ranks, and byte-bounded source-bearing evidence. Its exported options omit `neighbors` until Phase 3; a supplied runtime `neighbors` option fails validation in this phase.
+**Files:** `src/retrieval.ts`, `src/evidence.ts`, `src/memory.ts`, `src/storage.ts`, `src/types.ts`, `tests/retrieval.test.ts`, `tests/fusion.test.ts`, `tests/evidence.test.ts`, `tests/search-contract.test.ts`, `tests/retrieval-runtime-read.ts`.
+**Consumes:** persisted records and embedding-space contract. **Produces:** `search`, stable branch ranks, and byte-bounded source-bearing evidence. Its exported options omit `neighbors` until Phase 3; a supplied runtime `neighbors` option fails validation in this phase. Evidence items have `role: "match"`, numeric scores, and ranks; `anchorIds`, context roles, and nullable context scores are introduced with Phase 3 behavior.
 
 Internal pure contracts in `src/retrieval.ts`: `compileLexicalQuery(query: string): { match: string | null; termsUsed: number; truncated: boolean }`; `fuseRanks(denseIds: readonly string[], lexicalIds: readonly string[]): { id: string; score: number; ranks: { dense?: number; lexical?: number } }[]`. Export from that module for tests, not from the package entry point.
 
-- [ ] Write failing cases `orders known cosine neighbors`, `scope is applied before top k`, `literal FTS input cannot inject syntax`, `RRF uses ranks not raw scores`, `stable ID breaks ties`, `empty corpus skips provider`, `updated deleted text cannot be searched`, `budget counts UTF-8 bytes`, `oversized record is skipped whole`, and `duplicate text retains distinct provenance`.
-- [ ] Test the pure fusion helper with lexical `[A,B]`, dense `[B,C]`, and constant 60. Expected order is `[B,A,C]`; exact scores are:
+- [x] Write failing cases `orders known cosine neighbors`, `scope is applied before top k`, `literal FTS input cannot inject syntax`, `RRF uses ranks not raw scores`, `stable ID breaks ties`, `empty corpus skips provider`, `updated deleted text cannot be searched`, `budget counts UTF-8 bytes`, `oversized record is skipped whole`, and `duplicate text retains distinct provenance`.
+- [x] Test the pure fusion helper with lexical `[A,B]`, dense `[B,C]`, and constant 60. Expected order is `[B,A,C]`; exact scores are:
 
 ```ts
 const fused = fuseRanks(["B", "C"], ["A", "B"]);
@@ -318,15 +318,17 @@ assert.ok(Math.abs(scoreOf("A") - 1 / 61) < 1e-12);
 assert.ok(Math.abs(scoreOf("C") - 1 / 62) < 1e-12);
 ```
 
-- [ ] Compile and run `node --test .test-dist/fusion.test.js .test-dist/retrieval.test.js .test-dist/evidence.test.js` and `bun test .test-dist/fusion.test.js .test-dist/retrieval.test.js .test-dist/evidence.test.js`; observe failures before adding the algorithms.
-- [ ] Implement controlled Unicode token extraction and literal quoting, bound SQL parameters, scoped dense/FTS candidate queries, ascending BM25 ranks, and rank fusion. No raw score blending, stemming dependency, query category classifier, or built-in LLM call.
-- [ ] Use one source-A target `a` containing `"ZX-81 repair"` followed by 200 unrelated words, with vector `[0.8,0.6]`; add **51 source-B distractors**, each containing only `"ZX-81 repair"` with vector `[1,0]`. Query vector `[1,0]`. Assert the distractors outrank `a` in unscoped dense and lexical branches, then a source-A `limit:1` hybrid search still returns `a`. This exceeds the minimum branch candidate cap of 50 and exposes global-top-k-then-filter bugs. Repeat with one source and different sessions. Include quotes, parentheses, `OR`, `NEAR`, and punctuation-only input to verify controlled FTS compilation.
-- [ ] Query an entity-poor sentence, a short numeric fact, a code identifier, and Vietnamese accented text. Verify deterministic expected lexical matches and preserved original text; do not interpret these synthetic tests as multilingual quality proof.
-- [ ] Replace `"ZX-81 repair"` with `"garden planning"`, then query the old term; it must disappear from the lexical branch. Remove the record and assert it disappears from both branches after reopen.
-- [ ] Return empty lexical rank for no lexical matches and preserve dense results. An embedding/provider failure remains an error; do not silently call that a successful hybrid search.
-- [ ] Implement whole-record byte selection when `search` first ships. Fixture texts `"A"`, `"é"`, `"🙂"` cost 1, 2, and 4 bytes. At ranks 1/2/3 and budget 3, return the first two with `usedBytes=3` and one budget omission. Budget 0 returns no items. A large first candidate is skipped so a smaller later candidate can fit; reject negative/fractional/unsafe budgets.
+- [x] Compile and run `node --test .test-dist/fusion.test.js .test-dist/retrieval.test.js .test-dist/evidence.test.js` and `bun test ./.test-dist/fusion.test.js ./.test-dist/retrieval.test.js ./.test-dist/evidence.test.js`; observe failures before adding the algorithms.
+- [x] Implement controlled Unicode token extraction and literal quoting, bound SQL parameters, scoped dense/FTS candidate queries, ascending BM25 ranks, and rank fusion. No raw score blending, stemming dependency, query category classifier, or built-in LLM call.
+- [x] Use one source-A target `a` containing `"ZX-81 repair"` followed by 200 unrelated words, with vector `[0.8,0.6]`; add **51 source-B distractors**, each containing only `"ZX-81 repair"` with vector `[1,0]`. Query vector `[1,0]`. Assert the distractors outrank `a` in unscoped dense and lexical branches, then a source-A `limit:1` hybrid search still returns `a`. This exceeds the minimum branch candidate cap of 50 and exposes global-top-k-then-filter bugs. Repeat with one source and different sessions. Include quotes, parentheses, `OR`, `NEAR`, and punctuation-only input to verify controlled FTS compilation.
+- [x] Query an entity-poor sentence, a short numeric fact, a code identifier, and Vietnamese accented text. Verify deterministic expected lexical matches and preserved original text; do not interpret these synthetic tests as multilingual quality proof.
+- [x] Replace `"ZX-81 repair"` with `"garden planning"`, then query the old term; it must disappear from the lexical branch. Remove the record and assert it disappears from both branches after reopen.
+- [x] Return empty lexical rank for no lexical matches and preserve dense results. An embedding/provider failure remains an error; do not silently call that a successful hybrid search.
+- [x] Implement whole-record byte selection when `search` first ships. Fixture texts `"A"`, `"é"`, `"🙂"` cost 1, 2, and 4 bytes. At ranks 1/2/3 and budget 3, return the first two with `usedBytes=3` and one budget omission. Budget 0 returns no items. A large first candidate is skipped so a smaller later candidate can fit; reject negative/fractional/unsafe budgets.
 
 **Acceptance:** both runtimes return the same IDs, ranks, and RRF scores within defined tolerance; branch filters precede candidate limits; update/delete/reopen and strict byte-budget tests pass. The first usable release candidate now retrieves bounded evidence without graph/NER or reader dependencies. Commit: `feat: add hybrid memory retrieval`.
+
+**Execution notes (2026-11-10):** 19 retrieval/fusion/evidence tests and 10 independently authored search-contract tests compiled and failed on the intended missing Phase 2 behavior in both runtimes before implementation. The existing schema and dependencies are unchanged. Tests cover cross-runtime rank/score equivalence, source/session filtering beyond the 50-candidate cutoff, UTF-8 binary ties, query cancellation/provider errors, and detached post-inference snapshots. The Phase 0 native incomplete-install fixture now includes the new storage runtime imports. Final verification is recorded in [LIMITATIONS.md](LIMITATIONS.md). The prior performance gate remains open; no benchmark was repeated and no neighbor/context API was added.
 
 ### Phase 3 — Add session neighbors within the existing budget
 
