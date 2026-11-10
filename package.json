@@ -1,0 +1,29 @@
+{
+  "name": "one-mem",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Independent TypeScript memory system inspired by Zero-Mem.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22",
+    "bun": ">=1.4"
+  },
+  "packageManager": "bun@1.4.4",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}
