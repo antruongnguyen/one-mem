@@ -6,6 +6,14 @@ one-mem is an independent TypeScript implementation informed by Zero-Mem. Only t
 
 Use one package and a shared TypeScript core for Node.js and Bun. Start with the same better-sqlite3 integration in both runtimes; introduce a second driver only if compatibility or measured benefits justify it. The [reference analysis](REFERENCE_ANALYSIS.md) records what to retain and change; the [implementation plan](IMPLEMENTATION_PLAN.md) defines the recommended contracts, tasks, and verification gates.
 
+## Paper-Informed Boundaries
+
+The [paper analysis](PAPER_ANALYSIS.md) separately examines the supplied v1 manuscript. Its dual views are an entity-context graph and a temporal hierarchy; lexical and dense retrieval are access signals within that system, not substitutes for those two structures. The paper uses query-conditioned, normalized-score fusion; one-mem's RRF is an independent baseline choice ([method, pp. 3-4](https://arxiv.org/pdf/2607.29377v1#page=3)).
+
+The paper's ablation supports complementary structural evidence on its evaluated multi-hop workload. Keep graph retrieval with bounded relational support as the first structural follow-up to evaluate when hybrid plus neighbors misses distributed evidence. Do not assume that simpler retrieval preserves the full model's quality, or adopt the paper's thresholds as validated one-mem defaults ([Figure 3, p. 7](https://arxiv.org/pdf/2607.29377v1#page=7)).
+
+Separate primary matches, expanded support, and final evidence when evaluating retrieval. The paper's top-k counts primary candidates before closure. Compare final evidence at equal byte budgets in the core; later reader comparisons also fix tokenizer, final prompt-token budget, reader, and prompt. Provenance and scope constraints must hold after every expansion, not only for initial matches.
+
 ## Reference Findings
 
 The inspected Python reference orchestrates indexing, query profiling, graph and temporal retrieval, evidence selection, and a final reader through mixins. It persists embeddings in Parquet, graph data in GraphML, and supporting metadata in JSON. Its graph path uses entity activation and personalized PageRank; dense retrieval provides a fallback when query entities are unavailable.
@@ -47,6 +55,7 @@ Start with concrete storage operations and one driver, without a general databas
 ## Storage Invariants
 
 - Original text and explicit source/session/speaker/order metadata remain authoritative. Derived units retain references to their originals.
+- New observations receive new trace IDs, including statements that update an earlier fact. Upsert corrects or replaces the same source record; it is not a fact-merging policy or an archive of prior revisions. Preserve conflicting statements and their times instead of silently applying a latest-wins rule.
 - Identical text from different sources must not lose provenance through deduplication.
 - Persist schema version, embedding-space identity, vector dimension, and distance metric. Reject incompatible, nonfinite, and zero-norm vectors before writes or queries.
 - Compute embeddings before entering synchronous transactions. Commit a record and its vector/FTS changes atomically; failures must not leave partial indexes.
@@ -65,5 +74,5 @@ If `bun:sqlite` is later adopted, its macOS extension loading needs a custom SQL
 
 ## Sources
 
-- [Paper](https://arxiv.org/abs/2607.29377), Yilin Xiao et al., 2026.
+- [Paper, v1](https://arxiv.org/pdf/2607.29377v1), Yilin Xiao et al., 2026; see [paper analysis](PAPER_ANALYSIS.md) for page-level evidence and experimental limits.
 - Reference at `e1b2f8ef98a3d023478ddb2049aba11753296d42`: [orchestration](https://github.com/Zero-Mem/Zero-mem/blob/e1b2f8ef98a3d023478ddb2049aba11753296d42/src/ZeroMem.py#L22), [indexing](https://github.com/Zero-Mem/Zero-mem/blob/e1b2f8ef98a3d023478ddb2049aba11753296d42/src/indexing.py#L417), [embedding storage](https://github.com/Zero-Mem/Zero-mem/blob/e1b2f8ef98a3d023478ddb2049aba11753296d42/src/embedding_store.py#L23), [graph retrieval](https://github.com/Zero-Mem/Zero-mem/blob/e1b2f8ef98a3d023478ddb2049aba11753296d42/src/retrieval.py#L256), [reader](https://github.com/Zero-Mem/Zero-mem/blob/e1b2f8ef98a3d023478ddb2049aba11753296d42/src/reader.py#L1006).

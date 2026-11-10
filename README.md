@@ -1,6 +1,6 @@
 # one-mem
 
-An independent TypeScript implementation inspired by [Zero-Mem: Zero-Token Memory Operations for LLM Agents](https://arxiv.org/abs/2607.29377), targeting Node.js and Bun with SQLite and [sqlite-vec](https://alexgarcia.xyz/sqlite-vec/js.html).
+An independent TypeScript implementation inspired by [Zero-Mem: Zero-Token Memory Operations for LLM Agents](https://arxiv.org/pdf/2607.29377), targeting Node.js and Bun with SQLite and [sqlite-vec](https://alexgarcia.xyz/sqlite-vec/js.html).
 
 **Status: project bootstrap.** The repository provides documentation and TypeScript build tooling. The entry point has no public API yet. Memory ingestion, retrieval, SQLite integration, and final question answering are planned, not implemented.
 
@@ -39,12 +39,17 @@ These dependencies are not installed in the package yet. An isolated macOS ARM64
 - `dist/` — generated JavaScript and declarations, ignored by Git.
 - [Architecture](docs/ARCHITECTURE.md) — proposed components, data flow, and invariants.
 - [Reference analysis](docs/REFERENCE_ANALYSIS.md) — lessons from Zero-Mem and alternatives.
+- [Paper analysis](docs/PAPER_ANALYSIS.md) — paper findings, experimental limits, and implications for one-mem.
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md) — recommended design, tasks, and acceptance checks.
 - [Decisions](docs/DECISIONS.md) — accepted constraints and provisional choices.
 - [TODO](docs/TODO.md) — ordered milestones with completion checks.
 - [Limitations](docs/LIMITATIONS.md) — current gaps and compatibility caveats.
 - [Repository guidelines](AGENTS.md) — contributor and agent instructions.
 - [Changelog](CHANGELOG.md) — project changes.
+
+## Acknowledgements
+
+We thank Yilin Xiao, Zhehan Zhu, Yujing Zhang, Jin Chen, Zijin Hong, Luyao Zhuang, Qinggang Zhang, Shengyuan Chen, Xiaocao Ouyang, Lingfei Ren, and Xiao Huang for the research and ideas behind Zero-Mem. Their work on preserving original interaction traces, combining relational and temporal evidence, and avoiding generative memory operations informs one-mem's architecture and evaluation. one-mem is an independent implementation and does not claim the paper's results.
 
 ## Reference and License
 

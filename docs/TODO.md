@@ -2,6 +2,8 @@
 
 Use [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for task details, contracts, and fixtures, and [REFERENCE_ANALYSIS.md](REFERENCE_ANALYSIS.md) for the rationale. This checklist reflects the revised hybrid-first recommendation, not a requirement to reproduce the Python implementation. Mark milestones complete only when their checks pass.
 
+[PAPER_ANALYSIS.md](PAPER_ANALYSIS.md) records the manuscript's distinct design, reported results, and implications for these evaluation gates.
+
 ## 0. Project Bootstrap
 
 - [x] Establish TypeScript ESM build tooling and English contributor documentation.
@@ -23,6 +25,7 @@ Use [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for task details, contracts
 ## 2. Durable Ingestion
 
 - [ ] Implement explicit source/session/order metadata and database namespace ownership using the plan's contracts.
+- [ ] Treat new observations as distinct trace IDs; test preservation of contradictory historical statements and reserve upsert for explicit source-record replacement.
 - [ ] Implement migrations and atomic, idempotent writes with update/delete semantics.
 - [ ] Persist embedding-space identity, dimension, and metric; reject incompatible, nonfinite, and zero-norm vectors.
 - [ ] Accept caller-supplied embeddings through a narrow provider contract, with inference outside SQL transactions.
@@ -49,8 +52,10 @@ Use [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for task details, contracts
 ## 5. Evaluation and Optional Experiments
 
 - [ ] Compare dense, lexical, hybrid, and hybrid-with-neighbors at equal evidence budgets.
+- [ ] Add distributed/multi-hop, temporal-state, aggregation, conflicting-evidence, and no-answer slices; report complete supporting-source coverage and scope violations.
+- [ ] Record primary, expanded, and final evidence counts and bytes separately; fix actual final prompt tokens and reader settings for later QA comparisons.
 - [ ] Report retrieval quality separately from final-answer quality, plus latency, storage, and model calls.
-- [ ] Evaluate NER/graph/PPR, stored windows/episodes, or reranking only against diagnosed baseline failures; use the plan's promotion criteria.
+- [ ] Prioritize a scoped graph/relational-support experiment for distributed-evidence failures; evaluate hierarchy or reranking against their own diagnosed failures and the plan's promotion criteria.
 - [ ] Keep gold answers, evidence labels, and dataset categories out of runtime retrieval inputs.
 
 ## 6. Optional Reader and Evaluation

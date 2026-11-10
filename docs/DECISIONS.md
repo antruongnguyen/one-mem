@@ -30,6 +30,8 @@ An isolated probe on macOS ARM64 passed with Node.js 22.23.3, Bun 1.4.4, better-
 
 Graph/PPR, NER, precomputed windows/episodes, cross-encoders, and a final reader are optional follow-up experiments. Promote them only after held-out evaluation shows gains against the hybrid baseline at comparable evidence budgets. Do not port dataset-specific query or answer-rewriting heuristics as defaults.
 
+Reading [paper v1](https://arxiv.org/pdf/2607.29377v1) strengthens the priority of a scoped graph/relational-support experiment for distributed-evidence failures. Its ablation compares graph and hierarchy variants of its full model, not one-mem's hybrid baseline. RRF plus neighbors remains a deliberate simplification whose quality must be measured independently. Evaluation will distinguish primary candidates from expanded/final evidence, and isolate encoder, storage, retrieval, final-reader, and end-to-end costs. See [PAPER_ANALYSIS.md](PAPER_ANALYSIS.md).
+
 The recommended first scope and database layout are design proposals, not existing functionality or user-imposed scale requirements. The [reference analysis](REFERENCE_ANALYSIS.md) explains alternatives; the [implementation plan](IMPLEMENTATION_PLAN.md) defines contracts and acceptance gates.
 
 ## D005 — Documentation and Collaboration
@@ -40,6 +42,7 @@ Use Conventional Commits and branches such as `feat/sqlite-storage`. Never add c
 
 ## Evidence
 
+- [Zero-Mem paper, v1](https://arxiv.org/pdf/2607.29377v1)
 - [Bun SQLite documentation](https://bun.com/docs/runtime/sqlite)
 - [sqlite-vec JavaScript integrations](https://alexgarcia.xyz/sqlite-vec/js.html)
 - [better-sqlite3](https://github.com/WiseLibs/better-sqlite3)

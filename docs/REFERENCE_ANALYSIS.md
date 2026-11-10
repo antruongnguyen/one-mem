@@ -16,6 +16,8 @@ Only the one-mem package bootstrap currently exists; recommendations below are n
 **Observed** describes that revision. **Recommended** describes one-mem's proposed design.
 The executable plan is [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md); current project decisions remain in [DECISIONS.md](DECISIONS.md).
 
+The supplied manuscript has now been read separately in [PAPER_ANALYSIS.md](PAPER_ANALYSIS.md). Distinguish its method and experimental configuration from this checkout: the paper reports graph damping and routing weight of 0.6, while implementation defaults and heuristic paths are revision-specific. Neither source establishes the quality of one-mem's simplified hybrid design.
+
 ## What the reference actually does
 
 ### Orchestration and model boundaries

@@ -31,6 +31,8 @@ The reference uses English-oriented NER and query heuristics. Multilingual suppo
 
 Reference benchmark figures are reported by the paper, not measurements of one-mem. A future comparison must record dataset versions, models, settings, and evaluation scripts. “Zero-token” refers to avoiding generative LLM calls in memory operations, not free embeddings or final QA.
 
+The supplied nine-page paper v1 evaluates a graph/hierarchy system with query-conditioned fusion, closure, and calibration; it does not evaluate one-mem's SQLite/FTS5/RRF simplification. Its reported 57.6% reduction concerns memory-operation time relative to LightMem in a controlled setup, not SQL query latency, end-to-end QA, or our local vector benchmarks. The paper's primary top-k precedes closure, and exact final context-token limits, dataset splits/counts, and repeated-run uncertainty are not fully specified. See [paper analysis](PAPER_ANALYSIS.md) before using its figures as comparison targets.
+
 Database encryption, access control, retention, and production deployment are not implemented. Local database files are ignored by Git; that alone is not a data-security boundary.
 
 ## Sources
