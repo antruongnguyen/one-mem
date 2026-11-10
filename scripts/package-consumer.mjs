@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,7 +8,8 @@ import * as api from "one-mem";
 const [operation, path, writer] = process.argv.slice(2);
 const runtime = process.versions.bun ? "bun" : "node";
 const entry = fileURLToPath(import.meta.resolve("one-mem"));
-assert.equal(entry, resolve("node_modules/one-mem/dist/index.js"));
+// Windows short names and resolved long names can identify the same file.
+assert.equal(realpathSync.native(entry), realpathSync.native(resolve("node_modules/one-mem/dist/index.js")));
 assert.deepEqual(Object.keys(api).sort(), ["MemoryError", "openMemory"]);
 if (runtime === "node") assert.equal(typeof globalThis.Bun, "undefined");
 for (const subpath of ["one-mem/dist/storage.js", "one-mem/evaluation"]) {
