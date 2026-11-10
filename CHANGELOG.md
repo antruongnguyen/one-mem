@@ -11,6 +11,7 @@
 
 ### Added
 
+- Added Phase 3 bounded session context through `search(..., { neighbors })`: a default radius of 0 and maximum of 2 consecutive records on either side of selected matches, restricted to the same source/session and explicit sequence order. Match `limit` and byte priority remain separate from context; shared context is deduplicated by ID and attributed to its selected matches within the existing whole-record UTF-8 byte budget. The read snapshot includes matches and context; schema version 1 and dependencies are unchanged.
 - Added the private Phase 1 `openMemory` lifecycle API for durable `upsert`, `get`, `remove`, and `close`, with an injected cosine embedding provider and schema version 1.
 - Added Phase 2 `search(query, options)` with source/session filters applied before dense-cosine and literal-token FTS5 candidate limits, reciprocal rank fusion with constant 60, and whole-record UTF-8 text-byte-bounded evidence. Query embeddings use provider purpose `query`; results retain record revisions, match roles, available branch ranks, RRF scores, and retrieval diagnostics.
 - Added namespace and embedding-space validation, provenance revisions, serialized operations with close/drain behavior, and atomic record, vector-BLOB, and FTS5 writes. The schema and API remain experimental with no stable cross-release compatibility promise.

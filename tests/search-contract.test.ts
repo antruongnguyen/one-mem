@@ -28,7 +28,7 @@ test("search rejects invalid queries and unsupported options before inference", 
       await assert.rejects(memory.search(query as string), { code: "INVALID_INPUT" });
     }
     const invalidOptions = [
-      null, [], { neighbors: 0 }, { unknown: true }, { signal: {} },
+      null, [], { neighbors: -1 }, { unknown: true }, { signal: {} },
       { sessionId: "session" }, { sourceId: " " }, { sourceId: "source", sessionId: "" },
       { sourceId: "\udfff" }, { sourceId: "source", sessionId: 1 },
       ...[0, -1, 0.5, 101, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1].map(limit => ({ limit })),
@@ -54,7 +54,7 @@ test("search defaults limit results without counting limit exclusions as byte om
     assert.equal(result.diagnostics.denseCandidates, 20);
     assert.equal(result.diagnostics.lexicalCandidates, 20);
     assert.ok(result.items.every(item => item.role === "match" && Number.isFinite(item.score)));
-    assert.equal("anchorIds" in result.items[0]!, false);
+    assert.deepEqual(result.items[0]!.anchorIds, []);
   } finally {
     await memory.close();
   }

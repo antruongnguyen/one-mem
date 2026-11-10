@@ -48,10 +48,12 @@ Use [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for task details, contracts
 
 ## 4. Context and Evidence
 
-- [ ] Fetch bounded neighbors from the same source/session using explicit ordinal metadata.
-- [ ] Deduplicate record identity without merging distinct-source provenance.
-- [x] Enforce the plan's explicit evidence-text byte budget and test Unicode boundaries for matched evidence; retain these checks when adding context.
-- [x] Preserve record revisions and distinguish recording time from event-time claims in matched evidence; extend the same provenance contract to Phase 3 context.
+- [x] Fetch bounded, contiguous neighbors from the same source/session, stopping at gaps and safe sequence boundaries.
+- [x] Deduplicate record identity without merging distinct-source provenance; merge shared-context anchor IDs while keeping matches unchanged.
+- [x] Enforce the explicit evidence-text byte budget across matches and context with match priority, whole records, and unique omission counts.
+- [x] Preserve detached record revisions and both timestamps in matched/context evidence; apply metadata moves and deletion to the next search without a rebuild.
+
+**Phase 3 evidence:** radius 0–2, scoped adjacency, anchor ordering, numeric boundaries, Unicode byte caps, metadata updates, and cross-runtime context snapshots pass local fixtures. Context expansion does not close the performance gate or establish real-model retrieval quality.
 
 ## 5. Evaluation and Optional Experiments
 

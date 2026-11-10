@@ -2,8 +2,8 @@
 
 ## Current Implementation
 
-- Phase 2 adds `search` to the Phase 1 record lifecycle: scoped exact scalar cosine + FTS5 candidates, RRF, and matched evidence under a UTF-8 text-byte budget. Schema version 1 and the shared better-sqlite3/sqlite-vec connection are unchanged.
-- The package and schema remain private and provisional. Reopen/persistence and deterministic retrieval fixtures are tested, but no compatibility guarantee across releases, retrieval-quality claim, or production capacity claim exists. Neighbor/context expansion, entity extraction, graph retrieval, reranking, and final QA are not implemented.
+- Phase 3 adds optional contiguous same-source/session neighbors to Phase 2 hybrid search, with shared anchor attribution and the existing whole-text UTF-8 budget. Schema version 1 and the shared better-sqlite3/sqlite-vec connection are unchanged.
+- The package and schema remain private and provisional. Reopen/persistence and deterministic retrieval/context fixtures are tested, but no compatibility guarantee across releases, retrieval-quality claim, or production capacity claim exists. Entity extraction, graph retrieval, reranking, and final QA are not implemented.
 - Native compatibility fixtures remain separate from schema-v1 ingestion/lifecycle/retrieval tests. The old storage benchmark measures its smaller fixture schema, not the current public search API. Unexecuted CI configuration does not establish platform support.
 - No production performance, accuracy, concurrency, or paper-parity claims have been established.
 
@@ -23,6 +23,23 @@ The following lanes are **configured, not executed by this local task**. Runner 
 | `ubuntu-24.04` | Linux glibc x64 | Current Node LTS / latest Bun | Unverified; selected versions reported at execution |
 
 Both executables must be on PATH for the compatibility suites. Cross-runtime tests fail rather than skip when either is missing. Windows ARM64 is out of scope, with no compatibility work planned; Linux musl has no configured lane and remains unverified.
+
+### Phase 3 local verification record — 2026-11-10
+
+Verified locally on macOS ARM64 with Node.js 22.23.3 and Bun 1.4.4. A clean export of staged project files, with a fresh frozen install and no ignored probes/references or prebuilt output, passed:
+
+| Check | Result |
+| --- | --- |
+| `bun install --frozen-lockfile` | Passed; dependencies unchanged |
+| `bun run typecheck`, `bun run build`, `bun run test:build` | Passed |
+| `bun run test:node` | 118 passed, 0 failed, 0 skipped |
+| `bun run test:bun` | 118 passed, 0 failed across 10 files; no skipped cases |
+| Built public entry imports | Passed in both runtimes |
+| README TypeScript example | Ran under Bun and Node with `--experimental-strip-types`; both returned `turn-2` as match, followed by `turn-1` and `turn-3` as context |
+
+The suite retains 98 prior cases and adds 20 Phase 3 cases. Context tests compiled and failed before neighbor support and against the expansion stub; prior default/zero and byte-budget controls remained green. Coverage includes ordinal gaps and endpoints, exact scope, radius/no-recursion, shared anchors, match priority, unique byte omissions, oversized-record continuity, metadata moves, preserved timestamps, detached snapshots, and context persistence across runtimes.
+
+Independent review found no actionable implementation issue. Additional Node public-API probes confirmed context retrieval beyond the branch candidate cap and anchor-rank priority when anchor sequence order is reversed. Documentation was aligned with current behavior. No schema change, new dependency, performance experiment, or remote CI run occurred; the Phase 0 performance gate remains open.
 
 ### Phase 2 local verification record — 2026-11-10
 
@@ -98,6 +115,8 @@ The user's subsequent continuation authorizes Phase 1 functionality on this base
 
 Phase 2 likewise adds functionality without repeating the benchmark or changing its threshold. Its behavioral tests do not measure public-API latency, real-model retrieval quality, or production-scale suitability. The original 100k p95 misses remain open evidence, not measurements of this new search implementation.
 
+Phase 3 adds context correctness tests without repeating those measurements. Neighbor expansion has no measured production latency or quality benefit yet; it does not resolve the earlier 100k gate or demonstrate parity with the paper's graph/hierarchy closure.
+
 The reference uses English-oriented NER and query heuristics. Multilingual support, including Vietnamese input, requires its own validation. Embedding models, entity extraction, vector dimensions, and reader budgets remain open choices.
 
 Reference benchmark figures are reported by the paper, not measurements of one-mem. A future comparison must record dataset versions, models, settings, and evaluation scripts. “Zero-token” refers to avoiding generative LLM calls in memory operations, not free embeddings or final QA.
@@ -123,7 +142,15 @@ Database encryption, access control, retention, and production deployment are no
 - The lexical compiler caps 32 distinct lowercase letter/number/underscore tokens and safely quotes them. `unicode61 remove_diacritics 0` retains accents, but Unicode normalization/case folding, Vietnamese segmentation, and code-symbol behavior are not a full linguistic or identifier analysis. Synthetic language cases establish behavior only.
 - The default 16,384-byte cap counts returned original text in UTF-8, including repeated text under different IDs. It excludes metadata, the query, prompt syntax, and tokenizer overhead. Whole oversized records are omitted, not compressed or truncated; this can exclude relevant evidence. Zero bytes returns no items while still reporting candidate/budget diagnostics for a nonempty scope.
 - Evidence is a detached snapshot after query inference. It carries namespace, caller IDs, revisions, ranks, and scores; later updates do not rewrite prior results. Citation identity validates provenance, not factual truth or completeness. Query embeddings still incur any provider-defined cost and privacy exposure.
-- Only matched items exist in Phase 2. `neighbors`, `anchorIds`, context roles, graph traversal, reader calls, and learned reranking are absent. Search rejects unsupported options rather than silently ignoring them. No schema, native dependency, or platform-support expansion is implied by this phase.
+- Phase 2 initially returned only matches; Phase 3 adds the context behavior below. Graph traversal, reader calls, and learned reranking remain absent. Search rejects unsupported options rather than silently ignoring them. No schema, native dependency, or platform-support expansion is implied.
+
+## Phase 3 Behavioral Boundaries
+
+- Neighbor radius is limited to two ordinals on each side of each selected match and defaults to zero. A missing ordinal stops that direction; another source/session, a timestamp, or a speaker label cannot bridge the gap. Context does not recursively expand or recover distant relational support.
+- Match selection consumes the byte budget first. The match limit does not cap the combined match/context count, but every returned record shares the same whole-text UTF-8 cap. Relevant context may be omitted for size; omission does not remove the stored record or create an ordinal gap.
+- Context has null relevance score and empty branch ranks. Its `anchorIds` identify selected matches that requested it, not proof that it is relevant or factually supports an answer. Shared context uses bytes once; identical text under different record IDs remains distinct evidence.
+- `budgetOmitted` counts distinct IDs inspected and rejected for bytes across match/context selection. It does not count all unreturned database rows or records excluded only by the match limit. A context record already rejected during the match pass is not counted again.
+- Results are detached snapshots from one read transaction after query inference. Later changes affect subsequent searches; they do not rewrite old evidence. Stored observation/event times are preserved and do not establish chronological fact precedence. Evaluation, real-model quality, crash recovery, and additional platform evidence remain pending.
 
 ## Sources
 

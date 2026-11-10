@@ -85,15 +85,19 @@ function upsertSignal(options?: UpsertOptions): AbortSignal | undefined {
   return raw.signal as AbortSignal | undefined;
 }
 
-function searchOptions(options?: SearchOptions): SearchOptions & { limit: number; maxEvidenceBytes: number } {
+function searchOptions(options?: SearchOptions): SearchOptions & { limit: number; neighbors: number; maxEvidenceBytes: number } {
   const raw = options === undefined ? {} : object(options,
-    ["sourceId", "sessionId", "limit", "maxEvidenceBytes", "signal"], "Search options");
-  const validated: SearchOptions & { limit: number; maxEvidenceBytes: number } = {
+    ["sourceId", "sessionId", "limit", "neighbors", "maxEvidenceBytes", "signal"], "Search options");
+  const validated: SearchOptions & { limit: number; neighbors: number; maxEvidenceBytes: number } = {
     limit: raw.limit === undefined ? 10 : raw.limit as number,
+    neighbors: raw.neighbors === undefined ? 0 : raw.neighbors as number,
     maxEvidenceBytes: raw.maxEvidenceBytes === undefined ? 16_384 : raw.maxEvidenceBytes as number,
   };
   if (!Number.isSafeInteger(validated.limit) || validated.limit < 1 || validated.limit > 100) {
     throw new MemoryError("INVALID_INPUT", "limit must be an integer in 1..100.");
+  }
+  if (!Number.isSafeInteger(validated.neighbors) || validated.neighbors < 0 || validated.neighbors > 2) {
+    throw new MemoryError("INVALID_INPUT", "neighbors must be an integer in 0..2.");
   }
   if (!Number.isSafeInteger(validated.maxEvidenceBytes) || validated.maxEvidenceBytes < 0) {
     throw new MemoryError("INVALID_INPUT", "maxEvidenceBytes must be a nonnegative safe integer.");
@@ -197,7 +201,7 @@ export async function openMemory(options: OpenMemoryOptions): Promise<Memory> {
         if (!hasScopedRecords(connection, validated)) return evidence;
         const [vector] = await embedTexts(embeddings, space, [text], "query", validated.signal);
         const snapshot = searchStoredRecords(connection, vector, lexical.match, validated,
-          Math.min(500, Math.max(50, 5 * validated.limit)), validated.limit, validated.maxEvidenceBytes);
+          Math.min(500, Math.max(50, 5 * validated.limit)), validated.limit, validated.maxEvidenceBytes, validated.neighbors);
         evidence.items = snapshot.items;
         Object.assign(evidence.diagnostics, { denseCandidates: snapshot.denseCandidates,
           lexicalCandidates: snapshot.lexicalCandidates, usedBytes: snapshot.usedBytes,

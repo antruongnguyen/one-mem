@@ -36,3 +36,24 @@ test("oversized record is skipped whole", async () => {
     assert.equal((await memory.get("a"))?.text, "🙂🙂");
   } finally { await value.cleanup(); }
 });
+
+test("context shares the whole-record UTF-8 budget", async () => {
+  const value = temporaryMemory();
+  value.embeddings.embed = async (texts, options) => texts.map(text => new Float32Array(
+    options.purpose === "query" || text === "A" ? [1, 0] : [0, 1],
+  ));
+  try {
+    const memory = await value.open();
+    await memory.upsert(["é", "A", "🙂"].map((text, index) =>
+      ({ id: String(index), sourceId: "s", sessionId: "day1", sequence: index, text })));
+    const evidence = await memory.search("!", { limit: 1, neighbors: 1, maxEvidenceBytes: 3 });
+    assert.deepEqual(evidence.items.map(item => [item.record.text, item.role]), [["A", "match"], ["é", "context"]]);
+    assert.equal(evidence.diagnostics.usedBytes, 3);
+    assert.equal(evidence.diagnostics.budgetOmitted, 1);
+    assert.deepEqual((await memory.search("!", { limit: 1, neighbors: 1 })).items.map(item => item.record.text), ["A", "é", "🙂"]);
+    const zero = await memory.search("!", { limit: 1, neighbors: 1, maxEvidenceBytes: 0 });
+    assert.deepEqual(zero.items, []);
+    assert.equal(zero.diagnostics.usedBytes, 0);
+    assert.equal(zero.diagnostics.budgetOmitted, 3);
+  } finally { await value.cleanup(); }
+});

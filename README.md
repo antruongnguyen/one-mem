@@ -2,11 +2,11 @@
 
 An independent TypeScript implementation inspired by [Zero-Mem: Zero-Token Memory Operations for LLM Agents](https://arxiv.org/pdf/2607.29377), targeting Node.js and Bun with SQLite and [sqlite-vec](https://alexgarcia.xyz/sqlite-vec/js.html).
 
-**Status: Phase 2 — scoped hybrid search and bounded evidence.** The private package provides `openMemory`, `upsert`, `get`, `remove`, `search`, and `close`, backed by an experimental version-1 schema. The API requires an injected cosine embedding provider. The API and schema do not have a stable cross-release compatibility promise; Phase 2 does not change schema version 1. Neighbor expansion belongs to Phase 3. Graph retrieval, a reader, and retrieval-quality claims remain evaluation-gated.
+**Status: Phase 3 — scoped hybrid search and bounded session context.** The private package provides `openMemory`, `upsert`, `get`, `remove`, `search`, and `close`, backed by an experimental version-1 schema. The API requires an injected cosine embedding provider. Search can add up to two consecutive records on either side of selected matches from the same source and session. Matches retain priority under the existing whole-record UTF-8 text-byte budget. The API and schema have no stable cross-release compatibility promise; Phase 3 does not change schema version 1. Graph retrieval, a reader, and retrieval-quality claims remain evaluation-gated.
 
 ## Direction
 
-The longer-term direction is a local, persistent memory system whose indexing and retrieval do not call a generative LLM. Phase 2 combines scoped scalar cosine ranking with FTS5 lexical ranking, then returns source-bearing evidence within a text-byte budget. Session-neighbor expansion and an optional final reader are later phases. Entity graphs and richer temporal structures are experiments that require evaluation before adoption.
+The longer-term direction is a local, persistent memory system whose indexing and retrieval do not call a generative LLM. Phase 2 combines scoped scalar cosine ranking with FTS5 lexical ranking; Phase 3 can expand selected matches to nearby session records within the same text-byte budget. An optional final reader remains a later phase. Entity graphs and richer temporal structures are experiments that require evaluation before adoption.
 
 “Zero-token” does not mean zero embedding cost, computation, storage, or final-reader cost. This project does not claim to reproduce the paper's benchmark results.
 
@@ -20,6 +20,7 @@ import { openMemory } from "./dist/index.js";
 const vectors = new Map<string, Float32Array>([
   ["red apple", new Float32Array([1, 0])],
   ["blue ocean", new Float32Array([0, 1])],
+  ["green leaf", new Float32Array([-1, 0])],
 ]);
 const embeddings = {
   space: { id: "demo-v1", dimensions: 2, metric: "cosine" as const },
@@ -41,27 +42,34 @@ const memory = await openMemory({
 });
 try {
   await memory.upsert([
-    { id: "apple-1", sourceId: "notes", text: "red apple" },
-    { id: "ocean-1", sourceId: "notes", text: "blue ocean" },
+    { id: "turn-1", sourceId: "notes", sessionId: "day1", sequence: 1, text: "blue ocean" },
+    { id: "turn-2", sourceId: "notes", sessionId: "day1", sequence: 2, text: "red apple" },
+    { id: "turn-3", sourceId: "notes", sessionId: "day1", sequence: 3, text: "green leaf" },
   ]);
-  const evidence = await memory.search("apple", { sourceId: "notes", limit: 5 });
-  console.log(evidence.items.map(({ record, role, ranks }) => ({
+  const evidence = await memory.search("apple", {
+    sourceId: "notes",
+    sessionId: "day1",
+    limit: 1,
+    neighbors: 1,
+  });
+  console.log(evidence.items.map(({ record, role }) => ({
     id: record.id,
-    revision: record.revision,
     role,
     text: record.text,
-    ranks,
   })));
+  // [{ id: "turn-2", role: "match", text: "red apple" },
+  //  { id: "turn-1", role: "context", text: "blue ocean" },
+  //  { id: "turn-3", role: "context", text: "green leaf" }]
 } finally {
   await memory.close();
 }
 ```
 
-`search(query, { sourceId?, sessionId?, limit?, maxEvidenceBytes?, signal? })` embeds the query with `purpose: "query"`. A session filter requires a source filter. The default limit is 10 matched records, and the accepted range is 1–100. `maxEvidenceBytes` defaults to 16,384 and counts only the UTF-8 bytes of complete returned record texts; it does not count metadata, prompts, or model tokens. Oversized records are skipped whole, and later smaller matches may still fit.
+`search(query, { sourceId?, sessionId?, limit?, maxEvidenceBytes?, neighbors?, signal? })` embeds the query with `purpose: "query"`. A session filter requires a source filter. The default `limit` is 10 selected matches, and the accepted range is 1–100. `neighbors` defaults to 0 and accepts integers from 0 through 2, applying that radius on each side of a selected match. Expansion follows consecutive sequence values only within the exact same source and session; an ordinal gap stops the walk. Timestamps do not establish order, and only selected matches expand. `maxEvidenceBytes` defaults to 16,384 and counts only the UTF-8 bytes of complete returned record texts, including context; it does not count metadata, prompts, or model tokens. Matches are selected before context and have byte priority. Oversized records are skipped whole, and later smaller records may still fit; context can make the returned item count exceed `limit`.
 
-Each match retains its source-bearing record, revision, dense and lexical ranks when present, and RRF score. Evidence diagnostics report branch candidate counts, lexical terms used and whether token extraction was truncated, bytes used, and records omitted by the evidence budget. Search filters are applied before each ranking branch's candidate cap. Dense candidates use scalar cosine distance; lexical input is compiled into up to 32 distinct Unicode letter/number/underscore tokens as literal FTS5 phrases. Punctuation-only queries can still use dense retrieval. Reciprocal rank fusion uses constant 60. An empty eligible corpus returns empty evidence without calling the query provider. Cancellation, embedding-space validation, and per-handle operation queuing follow the same lifecycle rules as writes.
+Each match retains its source-bearing record, revision, dense and lexical ranks when present, and RRF score. Context records retain their own source and revision provenance; context shared by selected matches keeps attribution to those matches and appears only once. Evidence diagnostics report branch candidate counts, lexical terms used and whether token extraction was truncated, bytes used, and distinct records omitted by the evidence budget. Search filters are applied before each ranking branch's candidate cap. Dense candidates use scalar cosine distance; lexical input is compiled into up to 32 distinct Unicode letter/number/underscore tokens as literal FTS5 phrases. Punctuation-only queries can still use dense retrieval. Reciprocal rank fusion uses constant 60. An empty eligible corpus returns empty evidence without calling the query provider. Cancellation, embedding-space validation, and per-handle operation queuing follow the same lifecycle rules as writes.
 
-Phase 2 does not expose a neighbor option or add conversational context. It makes no graph, reader, multilingual retrieval-quality, or production-capacity claim. The Phase 0 performance gate remains open; this phase adds no new performance experiment.
+Matches, their adjacent context, and detached evidence are materialized in one read transaction after query embedding. Updates, deletes, or source/session/sequence moves take effect on the next search; already returned items keep their revision and supplied timestamps. Phase 3 adds no schema or dependency and makes no graph, reader, multilingual retrieval-quality, or production-capacity claim. The Phase 0 performance gate remains open; this phase adds no new performance experiment.
 
 Use a new record ID for each observation so conflicting statements remain separately attributable. Reuse an ID only to explicitly correct that same source record; its replacement gets a new revision, and the old content is not retained.
 

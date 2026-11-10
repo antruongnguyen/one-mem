@@ -46,15 +46,17 @@ export interface Scope {
 
 export interface SearchOptions extends Scope {
   limit?: number;
+  neighbors?: number;
   maxEvidenceBytes?: number;
   signal?: AbortSignal;
 }
 
 export interface EvidenceItem {
   record: MemoryRecord;
-  role: "match";
-  score: number;
+  role: "match" | "context";
+  score: number | null;
   ranks: { dense?: number; lexical?: number };
+  anchorIds: readonly string[];
 }
 
 export interface Evidence {

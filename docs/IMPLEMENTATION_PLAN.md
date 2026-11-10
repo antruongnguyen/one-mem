@@ -215,7 +215,7 @@ Use `remove_diacritics 0` initially to preserve accents; FTS5 Unicode tokenizati
 | `src/embeddings.ts` | Provider validation and vector encoding | 1 |
 | `src/memory.ts` | Lifecycle, upsert/remove/search coordination | 1–2 |
 | `src/retrieval.ts` | Lexical query compiler, branch ranks, RRF | 2 |
-| `src/evidence.ts` | Whole-record byte budget; source/session neighbors added next | 2–3 |
+| `src/evidence.ts` | Whole-record byte budget and bounded source/session neighbors | 2–3 |
 | `tests/fixtures.ts` | Independently authored records/vectors | 0 |
 | `tests/*.test.ts` | Native storage and behavioral tests | Every phase |
 | `tsconfig.test.json`, `scripts/run-tests.mjs` | Compile/run shared tests | 0 |
@@ -332,17 +332,19 @@ assert.ok(Math.abs(scoreOf("C") - 1 / 62) < 1e-12);
 
 ### Phase 3 — Add session neighbors within the existing budget
 
-**Files:** `src/evidence.ts`, `src/memory.ts`, `src/types.ts`, `src/storage.ts`, `tests/evidence.test.ts`, `tests/context.test.ts`.
+**Files:** `src/evidence.ts`, `src/memory.ts`, `src/types.ts`, `src/storage.ts`, `tests/evidence.test.ts`, `tests/context.test.ts`, `tests/context-contract.test.ts`, `tests/context-runtime-read.ts`.
 **Consumes:** fused candidates, the existing byte selector, and current source records. **Produces:** the `neighbors` option, context roles, and shared-anchor attribution within the same byte cap.
 
-- [ ] Write failing cases `neighbors stop at session and ordinal gaps`, `shared neighbor appears once`, and `matches retain priority over context`; keep the Phase 2 byte/provenance fixtures running.
-- [ ] Use four turns with IDs `t1..t4`, source `s`, session `day1`, ordinals `1..4`. Force only `t2` to match and search with `limit:1, neighbors:1`: expected items `[t2,t1,t3]`, roles `[match,context,context]`. A turn in `day2` or another source never appears. Remove `t3`; `t4` must not bridge the missing ordinal.
-- [ ] Budget fixture texts `"A"`, `"é"`, `"🙂"` cost 1, 2, and 4 UTF-8 bytes. In that rank order with budget 3, expect first two records, `usedBytes=3`, and one budget omission. With budget 0, return no records. No truncated Unicode or rewritten text is permitted.
-- [ ] Run `node --test .test-dist/context.test.js .test-dist/evidence.test.js` and the equivalent `bun test` command after test compilation; observe red, implement the numbered ranking/context behavior, then rerun green.
-- [ ] Fetch candidate records and context in the same read transaction; construct detached result objects before ending it. Update/delete a source afterward and assert the previously returned evidence still contains its original revision/text.
-- [ ] Update a turn's source/session/ordinal and verify immediate neighbor behavior with no rebuild job. Do not reinterpret `observedAt` as `eventAt`; retain both as supplied instants.
+- [x] Write failing cases `neighbors stop at session and ordinal gaps`, `shared neighbor appears once`, and `matches retain priority over context`; keep the Phase 2 byte/provenance fixtures running.
+- [x] Use four turns with IDs `t1..t4`, source `s`, session `day1`, ordinals `1..4`. Force only `t2` to match and search with `limit:1, neighbors:1`: expected items `[t2,t1,t3]`, roles `[match,context,context]`. A turn in `day2` or another source never appears. Remove `t3`; `t4` must not bridge the missing ordinal.
+- [x] Budget fixture texts `"A"`, `"é"`, `"🙂"` cost 1, 2, and 4 UTF-8 bytes. In that rank order with budget 3, expect first two records, `usedBytes=3`, and one budget omission. With budget 0, return no records. No truncated Unicode or rewritten text is permitted.
+- [x] Run `node --test .test-dist/context.test.js .test-dist/evidence.test.js` and the equivalent `bun test` command after test compilation; observe red, implement the numbered ranking/context behavior, then rerun green.
+- [x] Fetch candidate records and context in the same read transaction; construct detached result objects before ending it. Update/delete a source afterward and assert the previously returned evidence still contains its original revision/text.
+- [x] Update a turn's source/session/ordinal and verify immediate neighbor behavior with no rebuild job. Do not reinterpret `observedAt` as `eventAt`; retain both as supplied instants.
 
 **Acceptance:** strict byte cap, exact text, revision-bearing provenance, deterministic item order, and isolation hold in both runtimes. Search can be consumed directly by callers. Commit: `feat: add bounded conversation evidence`.
+
+**Execution notes (2026-11-10):** compiled context cases failed before neighbor support and against the connected expansion stub in both runtimes; prior zero/default and UTF-8 controls remained green. The implementation follows the existing rank/budget/snapshot design without schema or dependency changes. Attribution is explicit: matches have empty `anchorIds`; context merges unique selected-anchor IDs in rank order. Budget omissions are deduplicated by ID across both selection passes, and oversized present neighbors preserve ordinal continuity. See D010 in [DECISIONS.md](DECISIONS.md) and final verification in [LIMITATIONS.md](LIMITATIONS.md). The Phase 0 performance gate remains open; no benchmark or quality evaluation was rerun.
 
 ### Phase 4 — Evaluate, package, and state support precisely
 

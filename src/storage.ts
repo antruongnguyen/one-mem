@@ -273,8 +273,28 @@ export function hasScopedRecords(db: Database.Database, scope: Scope): boolean {
   } catch (cause) { throw sqliteError(cause); }
 }
 
+function readSessionNeighbors(db: Database.Database, anchor: MemoryRecord, radius: number): MemoryRecord[] {
+  if (anchor.sessionId === undefined || anchor.sequence === undefined) return [];
+  const lookup = db.prepare<[string, string, bigint], { id: string }>(`
+    SELECT id FROM records WHERE source_id = ? AND session_id = ? AND sequence = ?
+  `);
+  const records: MemoryRecord[] = [];
+  for (const direction of [-1n, 1n]) {
+    for (let distance = 1; distance <= radius; distance++) {
+      const sequence = BigInt(anchor.sequence) + direction * BigInt(distance);
+      if (sequence < 0n || sequence > BigInt(Number.MAX_SAFE_INTEGER)) break;
+      const row = lookup.get(anchor.sourceId, anchor.sessionId, sequence);
+      if (!row) break;
+      const stored = readStoredRecord(db, row.id);
+      if (!stored) throw new MemoryError("DATABASE_MISMATCH", "A neighbor has no source record.");
+      records.push(stored.record);
+    }
+  }
+  return records;
+}
+
 export function searchStoredRecords(db: Database.Database, vector: Buffer, match: string | null,
-  scope: Scope, candidateLimit: number, limit: number, maxEvidenceBytes: number,
+  scope: Scope, candidateLimit: number, limit: number, maxEvidenceBytes: number, neighbors = 0,
 ) {
   const filter = scopeFilter(scope);
   try {
@@ -300,7 +320,8 @@ export function searchStoredRecords(db: Database.Database, vector: Buffer, match
         if (!stored) throw new MemoryError("DATABASE_MISMATCH", "A candidate has no source record.");
         return { ...candidate, record: stored.record };
       });
-      return { ...selectEvidence(candidates, limit, maxEvidenceBytes),
+      return { ...selectEvidence(candidates, limit, maxEvidenceBytes,
+        neighbors === 0 ? undefined : record => readSessionNeighbors(db, record, neighbors)),
         denseCandidates: dense.length, lexicalCandidates: lexical.length };
     })();
   } catch (cause) { throw sqliteError(cause); }
