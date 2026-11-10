@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import type Database from "better-sqlite3";
+import Database from "better-sqlite3";
 import { openStorage } from "../dist/storage.js";
 import { createFixtureSchema, denseRows, insertFixture, lexicalIds,
   vectorBytes } from "./fixtures.js";
@@ -202,12 +202,22 @@ test("the other runtime reopens this database and persists its own writes", () =
 test("missing parents and invalid database paths retain underlying I/O errors", () => {
   const directory = mkdtempSync(join(tmpdir(), "one mem paths "));
   try {
-    assert.throws(() => openStorage(join(directory, "absent", "memory.sqlite")),
-      error => error instanceof Error && error.cause === undefined
-        && ((error instanceof TypeError && /directory does not exist/.test(error.message))
-          || ("code" in error && error.code === "SQLITE_CANTOPEN")));
-    assert.throws(() => openStorage(directory), error => error instanceof Error
-      && "code" in error && error.code === "SQLITE_CANTOPEN" && error.cause === undefined);
+    for (const path of [join(directory, "absent", "memory.sqlite"), directory]) {
+      // Native path errors vary by platform; the wrapper must preserve them.
+      let caught: unknown;
+      try { new Database(path).close(); } catch (error) { caught = error; }
+      assert.ok(caught instanceof Error, "The native driver must reject this path");
+      const nativeError = caught;
+      assert.throws(() => openStorage(path), error => {
+        assert.ok(error instanceof Error);
+        assert.equal(error.constructor, nativeError.constructor);
+        assert.equal(error.message, nativeError.message);
+        assert.equal("code" in error ? error.code : undefined,
+          "code" in nativeError ? nativeError.code : undefined);
+        assert.equal(error.cause, nativeError.cause);
+        return true;
+      });
+    }
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
